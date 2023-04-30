@@ -1,8 +1,6 @@
 export default {
-  // url:'https://readbot.chat.yuanmadejia.com/',
-  // api_url: 'https://readbot.chat.yuanmadejia.com/',
-  url:'http://10.144.1.5:3300/',
-  api_url: 'http://10.144.1.5:3300/wechat/',
+  url:'https://api.maas.cas-ll.cn/',
+  api_url: 'https://api.maas.cas-ll.cn/wechat/',
   // url:'http://10.144.1.1:3000/', 
   // api_url: 'http://10.144.1.1:3000/chat/',
   version: '1.0.0',

@@ -98,17 +98,12 @@
 			},
 			// 发送消息
 			async sendMessage() {
-				// 判断文本为空
-				if (!this.value.trim()) return
-				// 判断是否有次数
-				if (!this.userinfo.chance.totalChatChance)
-					return uni.showToast({
-						title: "对话次数已用尽",
-						duration: 2000,
-						icon: 'none'
-					})
-
 				try {
+					// 判断文本为空
+					if (!this.value.trim()) return
+					// 判断是否有次数
+					if (!this.userinfo.chance.totalChatChance) throw new Error("对话次数已用尽")
+
 					this.sending = true
 					this.scrollToBottom()
 					uni.showLoading({
@@ -124,12 +119,10 @@
 					if (res.status == 1) {
 						this.chat.push({
 							avatar: this.userinfo.avatar,
-							chatId: 4,
 							content: this.value,
 							dialogId: this.dialogId,
-							type: true,
-							end: true,
-							userId: this.userinfo.id
+							userId: this.userinfo.id,
+							type: true
 						});
 						this.value = ''
 						this.getChat()
@@ -186,38 +179,39 @@
 			},
 
 			getChat() {
-				let elapsed = 0
 				let errorCount = 0
+				let flag = false
 				this.timer = setInterval(async () => {
-					const res1 = await this.$h.http('get-chat-stream')
-					if (res1.status == 1) {
-						errorCount = 0
-						if (elapsed == 0) this.chat.push(res1.data)
-						this.chat[this.chat.length - 1].content = res1.data.content
+					const res = await this.$h.http('get-chat-stream')
+					if (res.status === 1) {
+						// new chat
+						if (!flag) {
+							if (res.data.content) {
+								this.chat.push(res.data)
+								flag = true
+							}
+						} else this.chat[this.chat.length - 1] = res.data
+
+						if (res.data.end === true) {
+							clearInterval(this.timer)
+							this.getUserInfo()
+						}
+
 						this.scrollToBottom()
 					} else {
 						errorCount++
-						console.log(errorCount)
-						if (errorCount === 3) {
+						if (errorCount >= 10) {
 							clearInterval(this.timer)
 							this.getUserInfo()
-							this.sending = false
 							uni.showToast({
-								title: res.message,
+								title: res.msg,
 								duration: 2000,
 								icon: 'none'
 							})
 							this.showRetry = true
 							this.scrollToBottom()
-							throw new Error(res.message)
 						}
 					}
-					if (res1.data.end == true) {
-						clearInterval(this.timer)
-						this.getUserInfo()
-						this.sending = false
-					}
-					elapsed += 100
 				}, 100)
 			},
 		},

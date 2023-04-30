@@ -31,69 +31,39 @@
 				info: {}
 			}
 		},
-		onLoad() {
-			const thi = this
-			const fid = this.$f.get('fid', 0)
-			// uni.checkSession({
-			// 	success: function() {
-			// 		console.log("用户登录态未过期");
-			// 	},
-			// 	fail: function() {
-			uni.login({
-				provider: 'weixin',
-				success: function(res) {
-					const code = res.code;
-					thi.$h.http('login', {
-						code: code,
-						fid: fid,
-					}).then((res) => {
-						console.log(res)
-						const results = res.data
-						if (thi.$f.isNullOrUndefined(results.token)) {
-							thi.$f.set('token', results.token)
-							thi.$f.set('openid', results.wxOpenId)
-							// uni.navigateTo({
-							// 	url: '/pages/index/index'
-							// }); 
-						} else {
-							thi.$f.set('openid', results.wxOpenId)
-						}
-					})
-				},
-				fail: function(err) {
-					console.log(err);
-				}
-			});
-			// 	  }
-			// });
-		},
+
 		methods: {
-			onGetPhoneNumber(e) {
-				if (e.detail.errMsg == "getPhoneNumber:fail user deny") { //用户决绝授权  
-					//拒绝授权后弹出一些提示 
-				} else { //允许授权  
-					const thi = this
+			async onGetPhoneNumber(e) {
+				try {
+					console.log(e)
+					if (!e.detail.errMsg) throw new Error(e.detail.errMsg)
 					const openid = this.$f.get('openid');
 					const fid = this.$f.get('fid', 0)
-					thi.$h.http('register', {
-							code: e.detail.code,
-							iv: e.detail.iv,
-							openid: openid,
-							cloudID: e.detail.cloudID,
-							encryptedData: e.detail.encryptedData,
-							fid: fid,
-						})
-						.then((res) => {
-							const results = res.results
-							if (thi.$f.isNullOrUndefined(results.token)) {
-								thi.$f.set('token', results.token)
-								uni.navigateTo({
-									url: '/pages/index/index'
-								});
-							}
-
-						})
+					const res = await this.$h.http('register', {
+						code: e.detail.code,
+						iv: e.detail.iv,
+						openid: openid,
+						cloudID: e.detail.cloudID,
+						encryptedData: e.detail.encryptedData,
+						fid: fid
+					})
+					if (res.status === 1) {
+						const results = res.data
+						if (this.$f.isNullOrUndefined(results.token)) {
+							this.$f.set('token', results.token)
+							uni.navigateTo({
+								url: '/pages/index/index'
+							});
+						}
+					} else throw new Error(res.msg)
+				} catch (e) {
+					uni.showToast({
+						title: e.message,
+						duration: 2000,
+						icon: 'none'
+					})
 				}
+
 			},
 		}
 	}

@@ -28,7 +28,7 @@
 							<image class="arrow" src="../../static/arrow.png"></image>
 						</view>
 						<view class="user-tip">
-							<text>大模型文献分析与聊天小程序</text>
+							<text>大模型文献分析与对话小程序</text>
 						</view>
 					</u-col>
 				</u-row>
@@ -491,9 +491,9 @@
 	}
 
 	.img-center image {
-		width: 110rpx;
-		height: 110rpx;
-		border-radius: 10px;
+		width: 100rpx;
+		height: 100rpx;
+		border-radius: 10rpx;
 		vertical-align: middle;
 	}
 
@@ -532,11 +532,12 @@
 	.user-tip {
 		display: flex;
 		align-items: center;
+		margin-top: 10rpx;
 
 		text {
 			color: #707070;
 			font-size: 35rpx;
-			line-height: 60rpx;
+			line-height: 40rpx;
 			font-weight: 400;
 		}
 	}

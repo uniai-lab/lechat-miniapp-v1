@@ -46,21 +46,22 @@
 						</view>
 					</div>
 				</view>
-				<view class="task" v-for="(item, index) in userinfo.task" :key="index">
-					<view class='task-left'>
-						<text>{{item.title}}</text>
-					</view>
-					<view class='task-right'>
-						<text>{{item.tip}}</text>
-						<view class="task-button">
-							<button v-if="item.type == 1" class="my-button" open-type="share"
-								@click="bottonTask(item)">{{item.button}}</button>
+				<view class="task-box">
+					<view class="task" v-for="(item, index) in userinfo.task" :key="index">
+						<view class='task-left'>
+							<text>{{item.title}}</text>
+						</view>
+						<view class='task-right'>
+							<text>{{item.tip}}</text>
+							<view class="task-button">
+								<button v-if="item.type == 1" class="my-button" open-type="share"
+									@click="bottonTask(item)">{{item.button}}</button>
 
-							<button v-else :class="item.flag ? 'my-button' : 'my-button-flag'"
-								@click="bottonTask(item)">{{item.button}}</button>
+								<button v-else :class="item.flag ? 'my-button' : 'my-button-flag'"
+									@click="bottonTask(item)">{{item.button}}</button>
+							</view>
 						</view>
 					</view>
-
 				</view>
 			</view>
 
@@ -107,9 +108,9 @@
 
 		onShareAppMessage() {
 			return {
-				title: this.config.share.title == '' ? 'AI文档分析利器，不来试试吗？' : this.config.share.title,
+				title: this.config.shareTitle,
 				path: '/pages/index/index?id=' + this.userinfo.id,
-				imageUrl: this.config.share.img == '' ? '../../static/share.jpg' : this.config.share.img,
+				imageUrl: this.config.shareImg,
 			}
 		},
 
@@ -147,9 +148,9 @@
 
 				if (e.type == 1) {
 					uni.share({
-						title: this.config.share.title == '' ? 'AI文档分析利器，不来试试吗？' : this.config.share.title,
-						desc: this.config.share.desc,
-						imageUrl: this.config.share.img == '' ? '../../static/share.jpg' : this.config.share.img,
+						title: this.config.shareTitle,
+						desc: this.config.shareDesc,
+						imageUrl: this.config.shareImg,
 						provider: "weixin",
 						path: '/pages/index/index?id=' + this.userinfo.id,
 						success: () => {
@@ -296,8 +297,8 @@
 	}
 
 	.main-label {
-		background:#fff;
-		padding: 25rpx 44rpx;
+		background: #fff;
+		padding: 40rpx;
 		border-radius: 1rem;
 		width: 80vw;
 		margin: 0 auto;
@@ -306,10 +307,6 @@
 	.main-label .main-label-content .main-label-title {
 		font-size: 30.53rpx;
 		font-weight: 400;
-	}
-
-	.task {
-		margin-top: 30rpx;
 	}
 
 	.main-label-iocn {
@@ -350,69 +347,74 @@
 		font-size: 22.9rpx;
 	}
 
-	.task {
-		display: flex;
-		justify-content: space-between;
+	.task-box {
+		margin-top: 60rpx;
 
-		.task-left {
+		.task {
 			display: flex;
-			font-size: 27rpx;
-			align-items: center;
-			width: 300rpx;
-
-			.dian {
-				width: 15.27rpx;
-				height: 15.27rpx;
-				background-color: #000000;
-				border-radius: 50%;
-				/* 创建圆点 */
-				margin-right: 20rpx;
-				/* 调整圆点与文本之间的距离 */
-			}
-
-			text {
-				color: #000000;
-				font-size: 27rpx;
-				font-family: PingFangSC-Medium, PingFang SC;
-				font-weight: 500;
-				color: #000000;
-				line-height: 69rpx;
-			}
-		}
-
-		.task-right {
-			display: flex;
-			align-items: center;
 			justify-content: space-between;
+			margin-top: 30rpx;
 
-			text {
-				font-size: 23rpx;
-				color: #5B5B5B;
-				margin-right: 17rpx;
+			.task-left {
+				display: flex;
+				font-size: 27rpx;
+				align-items: center;
+				width: 300rpx;
+
+				.dian {
+					width: 15.27rpx;
+					height: 15.27rpx;
+					background-color: #000000;
+					border-radius: 50%;
+					/* 创建圆点 */
+					margin-right: 20rpx;
+					/* 调整圆点与文本之间的距离 */
+				}
+
+				text {
+					color: #000000;
+					font-size: 27rpx;
+					font-family: PingFangSC-Medium, PingFang SC;
+					font-weight: 500;
+					color: #000000;
+					line-height: 69rpx;
+				}
 			}
 
-			.task-button {
-				background: #00A29C;
-				border-radius: 17rpx;
-				font-size: 22.9rpx;
-				color: #FFFFFF;
+			.task-right {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
 
-				.my-button {
+				text {
+					font-size: 25rpx;
+					color: #5B5B5B;
+					margin-right: 17rpx;
+				}
+
+				.task-button {
 					background: #00A29C;
-					border-radius: 10rpx;
-					font-size: 20rpx;
+					border-radius: 17rpx;
+					font-size: 22.9rpx;
 					color: #FFFFFF;
-					padding: 0rpx 10rpx;
-				}
 
-				.my-button-flag {
-					background: #adadad;
-					border-radius: 10rpx;
-					font-size: 20rpx;
-					color: #FFFFFF;
-					padding: 0rpx 10rpx;
-				}
+					.my-button {
+						background: #00A29C;
+						border-radius: 10rpx;
+						font-size: 20rpx;
+						color: #FFFFFF;
+						padding: 0rpx 10rpx;
+					}
 
+					.my-button-flag {
+						background: #adadad;
+						border-radius: 10rpx;
+						font-size: 20rpx;
+						color: #FFFFFF;
+						padding: 0rpx 10rpx;
+					}
+
+				}
 			}
 		}
 	}
