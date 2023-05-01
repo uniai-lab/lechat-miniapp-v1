@@ -1,11 +1,16 @@
 <template>
 	<view class="page">
-		<view class="navbar">
-			<uni-icons type="back" size="50rpx" @click="back"></uni-icons>
-			<view class="navbar-title">{{title}}</view>
+		<view class="navbar" :style="{height: navigationBarAndStatusBarHeight}">
+			<!--空白来占位状态栏-->
+			<view :style="{height: statusBarHeight}"></view>
+			<view class="navigation-bar" :style="{height: navigationBarHeight}">
+				<uni-icons class="back" type="back" size="50rpx" @click="back"></uni-icons>
+				<view class="navbar-title">{{title}}</view>
+			</view>
 		</view>
 
-		<scroll-view class="chat" scroll-y :scroll-with-animation="false" :scroll-into-view="bottomView">
+		<scroll-view :style="{top: navigationBarAndStatusBarHeight}" class="chat" scroll-y
+			:scroll-with-animation="false" :scroll-into-view="bottomView">
 			<view class="chat-content" v-for="(item, index) in chat" :key="index" :data-self="item.type">
 				<u--image showLoading :src="item.avatar" width="76rpx" height="76rpx" shape="circle" fade
 					duration="450" />
@@ -42,6 +47,11 @@
 	export default {
 		data() {
 			return {
+				// 导航栏和状态栏高度
+				navigationBarAndStatusBarHeight: wx.getStorageSync('statusBarHeight') +
+					wx.getStorageSync('navigationBarHeight') + 'px',
+				statusBarHeight: wx.getStorageSync('statusBarHeight') + 'px',
+				navigationBarHeight: wx.getStorageSync('navigationBarHeight') + 'px',
 				placeholder: '输入关于文档的问题',
 				chat: [],
 				value: '',
@@ -55,8 +65,8 @@
 				keyboardHeight: 0
 			};
 		},
-		onResize() {
-			this.showInput = false
+		onShow() {
+			this.showBottom = true
 		},
 		onLoad(e) {
 			if (e && parseInt(e.dialogId)) {
@@ -76,20 +86,17 @@
 			this.getUserInfo();
 
 			uni.onKeyboardHeightChange(res => {
-				this.showBottom = false
 				this.keyboardHeight = res.height;
 				this.scrollToBottom()
-				this.showBottomInput()
+				if (res.duration === 0) this.showBottom = false
+				else this.showBottom = true
 			})
 		},
 		methods: {
 			back() {
 				uni.navigateBack();
 			},
-			showBottomInput(time = 500) {
-				setTimeout(() => this.showBottom = true)
-			},
-			scrollToBottom(time = 500, callback = null) {
+			scrollToBottom(time = 0, callback = null) {
 				this.bottomView = ''
 				setTimeout(() => {
 					this.bottomView = 'bottomView'
@@ -99,15 +106,13 @@
 			// 发送消息
 			async sendMessage() {
 				try {
-					// 判断文本为空
 					if (!this.value.trim()) return
-					// 判断是否有次数
 					if (!this.userinfo.chance.totalChatChance) throw new Error("对话次数已用尽")
 
 					this.sending = true
 					this.scrollToBottom()
 					uni.showLoading({
-						title: '正在输入',
+						title: '大模型输入中...',
 						mask: true
 					})
 
@@ -151,7 +156,7 @@
 							'<span style=\"font-weight:700;\">');
 						this.chat[0].content = this.chat[0].content.replace(/{\/bold}/, '</span>');
 						this.scrollToBottom()
-						this.showBottomInput()
+						this.showBottom = true
 					} else throw new Error(res.message)
 				} catch (e) {
 					uni.showToast({
@@ -253,30 +258,35 @@
 
 	.navbar {
 		position: fixed;
+		width: 100%;
 		top: 0;
-		left: 0;
-		right: 0;
-		height: 180rpx;
 		background: #eefffe;
-		display: flex;
-		justify-items: center;
-		align-items: center;
-		padding: 40rpx 15rpx 20rpx 15rpx;
 
-		.navbar-title {
-			font-size: 35rpx;
-			max-width: 60vw;
-			overflow: hidden;
-			white-space: nowrap;
-			text-overflow: ellipsis;
-			font-weight: 400;
+		.navigation-bar {
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+
+			.back {
+				font-size: 35rpx;
+				color: #000;
+				margin-left: 10rpx;
+			}
+
+			.navbar-title {
+				font-size: 35rpx;
+				max-width: 60vw;
+				overflow: hidden;
+				white-space: nowrap;
+				text-overflow: ellipsis;
+				font-weight: 400;
+			}
 		}
 	}
 
 	.chat {
 		background: linear-gradient(to bottom, #eefffe, #FDFDFD);
 		position: fixed;
-		top: 180rpx;
 		bottom: 0;
 		left: 0;
 		right: 0;
@@ -333,8 +343,9 @@
 	}
 
 	.input-bottom {
-		animation: slide-fade-in 0.5s ease-in forwards;
-		box-shadow: 0rpx 0rpx 8rpx 0rpx rgba(233, 233, 233, 0.5);
+		animation: slide-fade-in 0.2s ease-in forwards;
+		background: transparent;
+		border: none;
 		display: flex;
 		align-items: center;
 		justify-content: center;

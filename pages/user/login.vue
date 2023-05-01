@@ -31,12 +31,9 @@
 				info: {}
 			}
 		},
-
 		methods: {
 			async onGetPhoneNumber(e) {
 				try {
-					console.log(e)
-					if (!e.detail.errMsg) throw new Error(e.detail.errMsg)
 					const openid = this.$f.get('openid');
 					const fid = this.$f.get('fid', 0)
 					const res = await this.$h.http('register', {
@@ -48,19 +45,16 @@
 						fid: fid
 					})
 					if (res.status === 1) {
-						const results = res.data
-						if (this.$f.isNullOrUndefined(results.token)) {
-							this.$f.set('token', results.token)
-							uni.navigateTo({
-								url: '/pages/index/index'
-							});
-						}
+						this.$f.set('token', res.data.token)
+						uni.navigateTo({
+							url: '/pages/index/index'
+						});
 					} else throw new Error(res.msg)
 				} catch (e) {
 					uni.showToast({
 						title: e.message,
-						duration: 2000,
-						icon: 'none'
+						duration: 3000,
+						icon: 'error'
 					})
 				}
 

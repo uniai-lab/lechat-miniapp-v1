@@ -48,7 +48,7 @@
 
 		<view class="file">
 			<text class="file-text">我的文档</text>
-			<text class="file-num">剩余可上传{{userinfo.total_upload || 0}}个文档</text>
+			<text class="file-num">剩余可上传{{userinfo.chance.totalUploadChance || 0}}个文档</text>
 		</view>
 
 		<view class="document">
@@ -176,7 +176,7 @@
 					}
 
 					// 判断是否可以上传 
-					if (this.userinfo.totalUploadChance <= 0)
+					if (this.userinfo.chance.totalUploadChance <= 0)
 						uni.showToast({
 							title: "本周10次机会已经用完，请去完成任务或下周再来上传",
 							duration: 3000,
@@ -439,7 +439,7 @@
 
 <style lang="scss">
 	.content {
-		background: linear-gradient(to bottom, #FDFDFD, #eef6f1);
+		background: linear-gradient(to bottom, #eefffe, #fff);
 		width: 100vw;
 		height: 100vh;
 		overflow: hidden;
@@ -453,15 +453,18 @@
 				justify-content: center;
 			}
 
-			margin-top: 65rpx;
+			margin-top: 50rpx;
 		}
 
 		.navigation-container {
 			width: 100vw;
 
-			.logo {
-				height: 100rpx;
-				width: 260rpx;
+			.navigation-bar {
+				text-align: center;
+
+				.logo {
+					height: 100%;
+				}
 			}
 		}
 	}
@@ -543,7 +546,7 @@
 	}
 
 	.upload {
-		margin: 60rpx 0;
+		margin: 50rpx 0;
 		display: flex;
 		flex-direction: row;
 		align-items: center;
@@ -587,7 +590,10 @@
 	}
 
 	.document {
-		margin-top: 50rpx;
+		padding: 50rpx 0;
+		height: calc(45vh + constant(safe-area-inset-bottom));
+		height: calc(45vh + env(safe-area-inset-bottom));
+		overflow-y: scroll;
 	}
 
 	.img-file {

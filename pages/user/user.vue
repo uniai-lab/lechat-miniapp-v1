@@ -131,7 +131,7 @@
 
 			duplicate(text) {
 				uni.setClipboardData({
-					data: this.config.official_account,
+					data: this.config.officialAccount,
 					success: () => {
 						uni.showToast({
 							title: '复制成功',
@@ -145,40 +145,37 @@
 			// 任务按钮
 			bottonTask(e) {
 				if (!e.flag) return false
-
 				if (e.type == 1) {
 					uni.share({
+						provider: "weixin",
 						title: this.config.shareTitle,
 						desc: this.config.shareDesc,
 						imageUrl: this.config.shareImg,
-						provider: "weixin",
 						path: '/pages/index/index?id=' + this.userinfo.id,
 						success: () => {
-							console.log('分享成功')
+							uni.showToast({
+								title: '分享成功'
+							})
 						},
 						fail: (e) => {
-							console.log('分享失败', e)
+							uni.showToast({
+								title: `分享失败：${e.message}`
+							})
 						}
 					})
-					return '';
 				} else {
-					console.log('复制');
 					uni.setClipboardData({
-						data: this.config.official_account,
+						data: this.config.officialAccount,
 						success: () => {
 							uni.showToast({
-								title: '复制成功,请去添加公众号',
+								title: '复制成功，请关注公众号IICT',
 								icon: 'none'
 							})
 						}
 					});
-
-					return '';
 				}
-
 			},
 
-			// 
 			getConfig() {
 				this.$h.http('config', {}).then((res) => {
 					if (res.status == 1) {
@@ -190,8 +187,6 @@
 						});
 					}
 				})
-
-
 			},
 
 			// 用户信息
@@ -229,8 +224,7 @@
 		padding-right: 0;
 
 		.head {
-			padding-top: 80rpx;
-			padding-bottom: 34rpx;
+			padding: 30rpx 0;
 		}
 	}
 
