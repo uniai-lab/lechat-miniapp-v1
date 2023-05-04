@@ -246,26 +246,20 @@
 					})
 				}
 			},
-
 			// 打开相册
 			confirm(index) {
-
 				const token = this.$f.get('token', '')
 				const url = this.$f.url();
 				const thi = this
 
-
-				if (this.userinfo.total_upload <= 0) {
-					uni.showToast({
+				if (this.userinfo.total_upload <= 0)
+					return uni.showToast({
 						title: "本周机会已经用完，请去完成任务或下周再来上传",
 						duration: 3000,
 						icon: 'none'
 					})
 
-					return '';
-				}
-
-				if (index == 1) {
+				if (index == 1)
 					uni.chooseMedia({
 						count: 1,
 						mediaType: ['all'],
@@ -283,9 +277,7 @@
 
 						}
 					})
-
-
-				} else {
+				else
 					uni.chooseMessageFile({
 						count: 1,
 						type: 'file',
@@ -300,8 +292,6 @@
 
 						}
 					});
-
-				}
 			},
 
 			// 统一上传文件

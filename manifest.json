@@ -1,5 +1,5 @@
 {
-    "name" : "PDF",
+    "name" : "LeChat",
     "appid" : "__UNI__43D0D4A",
     "description" : "",
     "versionName" : "1.0.0",
@@ -53,9 +53,9 @@
         "appid" : "wxf124c05330d154e7",
         "setting" : {
             "urlCheck" : false,
-            "es6" : false,
-            "postcss" : false,
-            "minified" : false
+            "es6" : true,
+            "postcss" : true,
+            "minified" : true
         },
         "usingComponents" : true
     },
