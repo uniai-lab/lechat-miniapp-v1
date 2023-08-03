@@ -140,9 +140,8 @@
 				} else {
 					uni.login({
 						provider: 'weixin',
-						success: function(res) {
+						success: (res) => {
 							const code = res.code;
-							console.log(code)
 							thi.$h.http('login', {
 								code: code,
 								fid: fid
@@ -150,6 +149,7 @@
 								const results = res.data
 								if (thi.$f.isNullOrUndefined(results.token)) {
 									thi.$f.set('token', results.token)
+									thi.$f.set('id', results.id)
 									thi.$f.set('openid', results.wxOpenId)
 									thi.isLogin = true
 									thi.documentList();
@@ -248,8 +248,6 @@
 			},
 			// 打开相册
 			confirm(index) {
-				const token = this.$f.get('token', '')
-				const url = this.$f.url();
 				const thi = this
 
 				if (this.userinfo.total_upload <= 0)
@@ -273,7 +271,7 @@
 
 							const size = res.tempFiles[0].size
 							// 将选择的PDF文件上传至服务器
-							thi.uploadFilePdf(url, token, tempFilePaths, fileName, size);
+							thi.uploadFile(tempFilePaths, fileName, size);
 
 						}
 					})
@@ -288,21 +286,24 @@
 							const fileName = res.tempFiles[0].name
 							const size = res.tempFiles[0].size
 							// 将选择的PDF文件上传至服务器
-							thi.uploadFilePdf(url, token, tempFilePaths, fileName, size);
+							thi.uploadFile(tempFilePaths, fileName, size);
 
 						}
 					});
 			},
 
 			// 统一上传文件
-			uploadFilePdf(url, token, tempFilePaths, fileName, size) {
-				const file_size = this.config.fileSize * 1024;
-
+			uploadFile(tempFilePaths, fileName, size) {
+		
+				const file_size = 10 * 1024 * 1024;
+				console.log(file_size)
+				console.log(size)
+				const url = this.$f.url();
 				// 判断文件大小  
 				if (size > file_size)
 					return uni.showToast({
-						title: "上传文件不得大于" + this.formatBytes(file_size) + ',当前文件大小' + this.formatBytes(size),
-						duration: 3000,
+						title: `上传文件不得大于${this.formatBytes(file_size)},当前文件大小${this.formatBytes(size)}`,
+						duration: 5000,
 						icon: 'none'
 					})
 
@@ -316,18 +317,33 @@
 					filePath: tempFilePaths,
 					name: 'file',
 					header: {
-						'token': token,
+						'token': this.$f.get('token', ''),
+						'id': this.$f.get('id', 0)
 					},
 					formData: {
 						fileName: fileName,
-						resourceTypeId: 1
+						typeId: 1
 					},
 					success: res => {
-						this.documentList();
-						this.getUserInfo();
-						uni.hideLoading();
+						if (res.status === 1) {
+							this.documentList();
+							this.getUserInfo();
+						} else {
+							uni.showToast({
+								title: res.msg,
+								duration: 3000,
+								icon: 'error'
+							})
+						}
 					},
-					fail: res => {
+					fail: e => {
+						uni.showToast({
+							title: e.message,
+							duration: 3000,
+							icon: 'error'
+						})
+					},
+					complete: res => {
 						uni.hideLoading();
 					}
 				});

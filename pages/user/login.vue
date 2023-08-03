@@ -17,8 +17,7 @@
 		</view>
 
 		<button class="custom-style" open-type="getPhoneNumber" @getphonenumber="onGetPhoneNumber">
-			<view class="logo-icon"></view>
-			微信登陆
+			手机号快捷登录
 		</button>
 
 	</view>
@@ -46,6 +45,7 @@
 					})
 					if (res.status === 1) {
 						this.$f.set('token', res.data.token)
+						this.$f.set('id', res.data.id)
 						uni.navigateTo({
 							url: '/pages/index/index'
 						});

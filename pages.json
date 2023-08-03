@@ -13,7 +13,7 @@
 		{
 			"path": "pages/user/login",
 			"style": {
-				"navigationBarTitleText": "登陆",
+				"navigationBarTitleText": "登录",
 				"disableScroll": true
 			}
 		}, {
