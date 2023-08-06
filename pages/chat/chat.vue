@@ -21,7 +21,7 @@
 			</view>
 			<view class="retry-content" v-show="showRetry">
 				<text class="retry-text">网络错误，请</text>
-				<view class="retry-btn-content" @tap="getChat">
+				<view class="retry-btn-content" @tap="loopChat">
 					<text class="retry-btn-text">重试</text>
 					<view>
 						<image class="retry-image" src="../../static/retry.png"></image>
@@ -116,10 +116,8 @@
 					// check input
 					if (!this.value.trim()) return
 					if (!this.userinfo.chance.totalChatChance) throw new Error("对话次数用尽")
-					const check = await this.$h.http('get-chat-stream', {}, {
-						method: 'GET'
-					})
-					if (check.status === 1 && !check.data.end) throw new Error('当前有流对话尚未结束')
+					const check = await this.getChat()
+					if (check.data && check.data.dataId === 0) throw new Error('当前有流对话尚未结束')
 
 					const input = this.value
 					this.value = ''
@@ -152,7 +150,7 @@
 						// update user chat content
 						this.chat[this.chat.length - 2] = res.data
 						this.dialogId = res.data.dialogId
-						this.getChat()
+						this.loopChat()
 					} else throw new Error(res.msg)
 				} catch (e) {
 					uni.showToast({
@@ -160,23 +158,23 @@
 						duration: 3000,
 						icon: 'none'
 					})
+					this.chat.pop()
+					this.chat.pop()
 					this.sending = false
 				}
 			},
 			// 循环获取聊天记录
-			async getChat() {
+			async loopChat() {
 				let count = 0
 				while (1) {
 					try {
 						if (this.unload) break
 						this.sending = true
-						const res = await this.$h.http('get-chat-stream', {}, {
-							method: 'GET'
-						})
+						const res = await this.getChat()
 						if (res.status === 1) {
 							const data = res.data
 
-							if (data.dialogId !== this.dialogId) break
+							if (!data || data.dialogId !== this.dialogId) break
 
 							// check processing chat, chatId=0
 							if (this.chat[this.chat.length - 1].chatId === 0)
@@ -185,7 +183,7 @@
 							if (this.chat[this.chat.length - 1].chatId !== data.chatId)
 								this.chat.push(data)
 
-							if (data.end) break
+							if (data.chatId > 0) break
 						} else throw new Error(res.msg)
 					} catch (e) {
 						count++
@@ -205,6 +203,11 @@
 				}
 				this.sending = false
 			},
+			async getChat() {
+				return await this.$h.http('get-chat-stream', {}, {
+					method: 'GET'
+				})
+			},
 			// 获取聊天列表数据
 			async init() {
 				try {
@@ -219,7 +222,7 @@
 						this.scrollToBottom()
 						this.showBottom = true
 						this.dialogId = res.data[0].dialogId // cover dialogId
-						await this.getChat()
+						await this.loopChat()
 					} else throw new Error(res.message)
 				} catch (e) {
 					uni.showToast({
