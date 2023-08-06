@@ -12,7 +12,7 @@
 			<view class="u-demo-block__content">
 				<u-row class="head-block">
 					<u-col span="3">
-						<view class="demo-layout bg-purple-light img-center" v-if="!isLogin" @click="login()">
+						<view class="demo-layout bg-purple-light img-center" v-if="!isLogin" @tap="login()">
 							<image src="../../static/avatar.png"></image>
 						</view>
 						<view class="demo-layout bg-purple-light img-center" v-if="isLogin">
@@ -20,10 +20,10 @@
 						</view>
 					</u-col>
 					<u-col span="9">
-						<view class="user-login" v-if="!isLogin" @click="login()">
+						<view class="user-login" v-if="!isLogin" @tap="login()">
 							<text>点击登录</text>
 						</view>
-						<view class="user-info" v-if="isLogin" @click.stop="user()">
+						<view class="user-info" v-if="isLogin" @tap.stop="user()">
 							<text>{{ userinfo.name }}</text>
 							<image class="arrow" src="../../static/arrow.png"></image>
 						</view>
@@ -35,11 +35,11 @@
 			</view>
 
 			<view class="upload">
-				<view class="block" @click="uploadImg()">
+				<view class="block" @tap="uploadImg()">
 					<image src="../../static/upload.png" mode=""></image>
 					<view class="text">文献上传</view>
 				</view>
-				<view class="block" @click="chat(null)">
+				<view class="block" @tap="chat(null)">
 					<image src="../../static/chat.png" mode=""></image>
 					<view class="text">任意聊天</view>
 				</view>
@@ -55,12 +55,12 @@
 			<view class="documents-wrapper" v-if="isLogin && document.length">
 				<view class="u-demo-block__content" v-for="(item, index) in document" :key="index">
 					<u-row customStyle="margin-bottom: 10px">
-						<u-col span="3" @click="chat(item.dialogId, item.fileName)">
+						<u-col span="3" @tap="chat(item.dialogId, item.fileName)">
 							<view class="demo-layout bg-purple-light img-file">
 								<image src="../../static/pdf.png" shape="square"></image>
 							</view>
 						</u-col>
-						<u-col span="7" @click="chat(item.dialogId, item.fileName)">
+						<u-col span="7" @tap="chat(item.dialogId, item.fileName)">
 							<view class="file-name">
 								<text>{{item.fileName}}</text>
 							</view>
@@ -68,13 +68,13 @@
 								<text>{{item.date}} {{item.size}}</text>
 							</view>
 						</u-col>
-						<u-col span="2" @click="preview(item)">
+						<u-col span="2" @tap="preview(item)">
 							<view class="icon iconfont icon-yulan"></view>
 						</u-col>
 					</u-row>
 				</view>
 			</view>
-			<view class="document-empty" v-else @click="uploadImg()">
+			<view class="document-empty" v-else @tap="uploadImg()">
 				<image src="../../static/null.png" class="img"></image>
 				<text class="tip">您未上传文档</text>
 			</view>
@@ -294,7 +294,7 @@
 
 			// 统一上传文件
 			uploadFile(tempFilePaths, fileName, size) {
-		
+
 				const file_size = 10 * 1024 * 1024;
 				console.log(file_size)
 				console.log(size)
@@ -325,12 +325,13 @@
 						typeId: 1
 					},
 					success: res => {
-						if (res.status === 1) {
+						const data = JSON.parse(res.data)
+						if (data.status === 1) {
 							this.documentList();
 							this.getUserInfo();
 						} else {
 							uni.showToast({
-								title: res.msg,
+								title: data.msg,
 								duration: 3000,
 								icon: 'error'
 							})

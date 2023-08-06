@@ -7,6 +7,7 @@ const http = function(url, data = {}, custom = {}) {
 	let {
 		method = 'post', loading = false, showError = true, toLogin = true
 	} = custom
+
 	if (loading)
 		uni.showLoading({
 			title: '加载中',

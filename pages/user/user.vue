@@ -1,6 +1,6 @@
 <template>
 	<view class="u-page content">
-		<view class="screen-cover" v-show="!hideScreenCove" @click="onHandleClose"></view>
+		<view class="screen-cover" v-show="!hideScreenCove" @tap="onHandleClose"></view>
 		<view class="u-demo-block">
 			<view class="head">
 				<u-row customStyle="margin-bottom: 10px">
@@ -17,7 +17,7 @@
 								<text class="text-center-button">免费用户</text>
 							</view>
 						</view>
-						<view class="text-bottom" @click="onTooltipClick">
+						<view class="text-bottom" @tap="onTooltipClick">
 							<text>剩余对话：{{userinfo.chance.totalChatChance}}次</text>
 							<text class="icon iconfont icon-wenhao"></text>
 							<zb-tooltip :visible="tootipVisible" placement="bottom" color="#00A29C">
@@ -55,10 +55,10 @@
 							<text>{{item.tip}}</text>
 							<view class="task-button">
 								<button v-if="item.type == 1" class="my-button" open-type="share"
-									@click="bottonTask(item)">{{item.button}}</button>
+									@tap="bottonTask(item)">{{item.button}}</button>
 
 								<button v-else :class="item.flag ? 'my-button' : 'my-button-flag'"
-									@click="bottonTask(item)">{{item.button}}</button>
+									@tap="bottonTask(item)">{{item.button}}</button>
 							</view>
 						</view>
 					</view>
@@ -69,7 +69,7 @@
 
 		<view class="bottom-text">
 			<text class="bottom-text-left">{{ config.footer }} </text>
-			<text class="bottom-text-right" @click="duplicate()"> {{' '}}{{ config.footerCopy }}</text>
+			<text class="bottom-text-right" @tap="duplicate()"> {{' '}}{{ config.footerCopy }}</text>
 		</view>
 
 	</view>

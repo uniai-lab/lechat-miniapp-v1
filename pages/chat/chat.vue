@@ -4,7 +4,7 @@
 			<!--空白来占位状态栏-->
 			<view :style="{height: statusBarHeight}"></view>
 			<view class="navigation-bar" :style="{height: navigationBarHeight}">
-				<uni-icons class="back" type="back" size="50rpx" @click="back"></uni-icons>
+				<uni-icons class="back" type="back" size="50rpx" @tap="back"></uni-icons>
 				<view class="navbar-title">{{title}}</view>
 			</view>
 		</view>
@@ -21,7 +21,7 @@
 			</view>
 			<view class="retry-content" v-show="showRetry">
 				<text class="retry-text">网络错误，请</text>
-				<view class="retry-btn-content" @tap="clickRetry">
+				<view class="retry-btn-content" @tap="getChat">
 					<text class="retry-btn-text">重试</text>
 					<view>
 						<image class="retry-image" src="../../static/retry.png"></image>
@@ -32,11 +32,12 @@
 			<view v-if="keyboardHeight" class="placeholder" :style="{ height: keyboardHeight + 'px' }"></view>
 		</scroll-view>
 
-		<view class="input-bottom" v-show="showBottom && !sending">
-			<input class="input" :adjust-position="false" v-model="value" :placeholder="placeholder" />
-			<button class="bottom" @click="sendMessage">
+		<view class="input-bottom" v-show="showBottom">
+			<input class="input" :class="sending?'disable':''" :adjust-position="false" v-model="value"
+				:placeholder="placeholder" />
+			<button class="bottom" :class="sending?'disable':''" @tap="sendMessage" :disabled="sending">
 				<view class="bottom-title">发送</view>
-				<view class="bottom-number">剩余 {{userinfo.chance.totalChatChance||0}} 次</view>
+				<view class="bottom-number">剩 {{userinfo.chance.totalChatChance||0}} 次</view>
 			</button>
 			<view v-if="keyboardHeight" class="placeholder" :style="{ height: keyboardHeight + 'px' }"></view>
 		</view>
@@ -59,10 +60,12 @@
 				title: '',
 				dialogId: 0,
 				userinfo: {},
+				config: {},
 				bottomView: '',
 				showBottom: false,
 				showRetry: false,
-				keyboardHeight: 0
+				keyboardHeight: 0,
+				unload: false
 			};
 		},
 		onShow() {
@@ -77,13 +80,14 @@
 				this.placeholder = '输入任意内容';
 			}
 
-			if (e && e.title && e.title != 'undefined')
+			if (e && e.title)
 				uni.setNavigationBarTitle({
 					title: e.title
 				});
 
+			this.userinfo = this.$f.get('userinfo')
+			this.config = this.$f.get('config')
 			this.init();
-			this.getUserInfo();
 
 			uni.onKeyboardHeightChange(res => {
 				this.keyboardHeight = res.height;
@@ -91,6 +95,9 @@
 				if (res.duration === 0) this.showBottom = false
 				else this.showBottom = true
 			})
+		},
+		onUnload() {
+			this.unload = true
 		},
 		methods: {
 			back() {
@@ -106,66 +113,121 @@
 			// 发送消息
 			async sendMessage() {
 				try {
+					// check input
 					if (!this.value.trim()) return
-					if (!this.userinfo.chance.totalChatChance) throw new Error("对话次数已用尽")
-
-					this.sending = true
-					this.scrollToBottom()
-					uni.showLoading({
-						title: '大模型输入中...',
-						mask: true
+					if (!this.userinfo.chance.totalChatChance) throw new Error("对话次数用尽")
+					const check = await this.$h.http('get-chat-stream', {}, {
+						method: 'GET'
 					})
+					if (check.status === 1 && !check.data.end) throw new Error('当前有流对话尚未结束')
+
+					const input = this.value
+					this.value = ''
+					this.sending = true
+
+					this.chat.push({
+						avatar: this.userinfo.avatar || this.config.DEFAULT_AVATAR_USER,
+						content: input,
+						dialogId: this.dialogId,
+						userId: this.userinfo.id,
+						chatId: 0,
+						type: true
+					});
+					this.chat.push({
+						avatar: this.config.DEFAULT_AVATAR_AI,
+						content: '🤔️大模型思考中...',
+						dialogId: this.dialogId,
+						userId: this.userinfo.id,
+						chatId: 0,
+						type: false
+					});
+					this.scrollToBottom()
 
 					const res = await this.$h.http('chat-stream', {
-						input: this.value,
+						input,
 						dialogId: this.dialogId
 					})
 
 					if (res.status == 1) {
-						this.chat.push({
-							avatar: this.userinfo.avatar,
-							content: this.value,
-							dialogId: this.dialogId,
-							userId: this.userinfo.id,
-							type: true
-						});
-						this.value = ''
+						// update user chat content
+						this.chat[this.chat.length - 2] = res.data
+						this.dialogId = res.data.dialogId
 						this.getChat()
 					} else throw new Error(res.msg)
 				} catch (e) {
 					uni.showToast({
 						title: e.message,
-						duration: 2000,
+						duration: 3000,
 						icon: 'none'
 					})
-				} finally {
-					uni.hideLoading()
 					this.sending = false
 				}
 			},
+			// 循环获取聊天记录
+			async getChat() {
+				let count = 0
+				while (1) {
+					try {
+						if (this.unload) break
+						this.sending = true
+						const res = await this.$h.http('get-chat-stream', {}, {
+							method: 'GET'
+						})
+						if (res.status === 1) {
+							const data = res.data
+
+							if (data.dialogId !== this.dialogId) break
+
+							// check processing chat, chatId=0
+							if (this.chat[this.chat.length - 1].chatId === 0)
+								this.chat[this.chat.length - 1] = data
+							// check new chat
+							if (this.chat[this.chat.length - 1].chatId !== data.chatId)
+								this.chat.push(data)
+
+							if (data.end) break
+						} else throw new Error(res.msg)
+					} catch (e) {
+						count++
+						if (count >= 10) {
+							this.getUserInfo()
+							uni.showToast({
+								title: e.message,
+								duration: 3000,
+								icon: 'none'
+							})
+							this.showRetry = true
+							break
+						}
+					} finally {
+						this.scrollToBottom()
+					}
+				}
+				this.sending = false
+			},
 			// 获取聊天列表数据
 			async init() {
-				const thi = this;
 				try {
 					const res = await this.$h.http('list-chat', {
-						dialogId: thi.dialogId,
+						dialogId: this.dialogId,
 					})
-					if (res.status == 1) {
+					if (res.status == 1 && res.data.length > 0) {
 						this.chat = res.data
 						this.chat[0].content = this.chat[0].content.replace(/{bold}/,
 							'<span style=\"font-weight:700;\">');
 						this.chat[0].content = this.chat[0].content.replace(/{\/bold}/, '</span>');
 						this.scrollToBottom()
 						this.showBottom = true
+						this.dialogId = res.data[0].dialogId // cover dialogId
+						await this.getChat()
 					} else throw new Error(res.message)
 				} catch (e) {
 					uni.showToast({
 						title: e.message,
-						duration: 2000,
+						duration: 3000,
 						icon: 'none'
 					})
 				}
-
 			},
 
 			// 用户信息
@@ -182,42 +244,18 @@
 					})
 				}
 			},
-
-			getChat() {
-				let errorCount = 0
-				let flag = false
-				this.timer = setInterval(async () => {
-					const res = await this.$h.http('get-chat-stream')
-					if (res.status === 1) {
-						// new chat
-						if (!flag) {
-							if (res.data.content) {
-								this.chat.push(res.data)
-								flag = true
-							}
-						} else this.chat[this.chat.length - 1] = res.data
-
-						if (res.data.end === true) {
-							clearInterval(this.timer)
-							this.getUserInfo()
-						}
-
-						this.scrollToBottom()
-					} else {
-						errorCount++
-						if (errorCount >= 10) {
-							clearInterval(this.timer)
-							this.getUserInfo()
-							uni.showToast({
-								title: res.msg,
-								duration: 2000,
-								icon: 'none'
-							})
-							this.showRetry = true
-							this.scrollToBottom()
-						}
-					}
-				}, 300)
+			async getConfig() {
+				try {
+					const res = await this.$h.http('config', {})
+					if (res.status == 1) this.config = res.data;
+					else throw new Error(res.msg)
+				} catch (e) {
+					uni.showToast({
+						title: e.msg,
+						duration: 2000,
+						icon: 'none'
+					})
+				}
 			},
 		},
 	};
@@ -364,14 +402,18 @@
 			background: #fff;
 			border-radius: 100rem;
 			font-size: 30rpx;
-			width: 400rpx;
+			width: 420rpx;
 			padding: 0 40rpx;
 			border: solid 2px #00A29C;
+
+			&.disable {
+				border: solid 2px #ccc;
+			}
 		}
 
 		.bottom {
 			margin-left: 22rpx;
-			width: 200rpx;
+			width: 180rpx;
 			height: 90rpx;
 			background: linear-gradient(127deg, #36ad6a 0%, #00A29C 100%);
 			border-radius: 100rem;
@@ -381,6 +423,10 @@
 			align-items: center;
 			justify-content: center;
 			margin-right: 0;
+
+			&.disable {
+				background: #ccc;
+			}
 
 			.bottom-title {
 				font-size: 30rpx;
