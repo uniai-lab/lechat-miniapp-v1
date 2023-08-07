@@ -1,32 +1,29 @@
 import App from './App'
-import uView from "uview-ui";
-import http from './common/http'
-import Conf from './common/config'
-import Func from './common/function'
+import uView from 'uview-ui'
+import * as http from './common/http'
+import * as conf from './common/config'
+import * as func from './common/function'
 
 // #ifndef VUE3
 import Vue from 'vue'
 Vue.config.productionTip = false
-Vue.use(uView);
+Vue.use(uView)
 
 // 网络请求
 Vue.prototype.$h = http
 
 // 配置文件
-Vue.prototype.$c = Conf
+Vue.prototype.$c = conf
 
-// 工具方法 
-Vue.prototype.$f = Func
+// 工具方法
+Vue.prototype.$f = func
 
 App.mpType = 'app'
 const app = new Vue({
-    ...App
+  ...App
 })
 app.$mount()
 // #endif
-
-
-
 
 // #ifdef VUE3
 import { createSSRApp } from 'vue'

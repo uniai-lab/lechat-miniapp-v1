@@ -1,2 +1,4 @@
 node_modules/*
 unpackage/*
+yarn.lock
+.DS_Store

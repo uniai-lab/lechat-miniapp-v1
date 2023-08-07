@@ -1,18 +1,27 @@
 {
-  "name": "pdf",
-  "version": "1.0.0",
-  "description": "",
+  "name": "lechat-wechat-app",
+  "version": "2.0.0",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "LeChat",
+    "LLM",
+    "GLM",
+    "GPT"
+  ],
+  "author": "devilyouwei",
+  "license": "MIT",
   "dependencies": {
     "uview-ui": "^2.0.31"
   },
   "devDependencies": {
-    "mini-program-iconfont-cli": "^0.6.1"
+    "eslint": "^8.46.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-vue": "^9.16.1",
+    "mini-program-iconfont-cli": "^0.6.1",
+    "prettier": "^3.0.1"
   }
 }

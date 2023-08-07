@@ -1,58 +1,78 @@
+import * as $ from './function'
 import config from './config'
-import func from './function'
 
-const api_url = func.getConfig('api_url')
+const api_url = config['api_url']
 
-const http = function(url, data = {}, custom = {}) {
-	let {
-		method = 'post', loading = false, showError = true, toLogin = true
-	} = custom
+export async function http(url, data = {}, method = 'post') {
+  const response = await uni.request({
+    url: api_url + url,
+    method,
+    data,
+    header: {
+      token: $.get('token') || '',
+      id: $.get('id') || 0
+    }
+  })
 
-	if (loading)
-		uni.showLoading({
-			title: '加载中',
-			mask: true
-		})
+  if (response[0]) throw new Error(response[0].errMsg)
 
-	return new Promise((resolve, reject) => {
-		uni.request({
-			url: api_url + url,
-			method: method,
-			data: data,
-			header: {
-				token: func.get('token') || null,
-				id: func.get('id') || 0
-			},
-			success: (res) => {
-				if (loading) uni.hideLoading()
+  const status = response[1].statusCode
+  const res = response[1].data
+  if (status !== 200) throw new Error(res)
 
-				if (Number(res.data.status) === 1) {
-					resolve(res.data)
-				} else if (Number(res.data.status) == -1) {
-					func.set('token', '');
-					func.set('userinfo', '');
-					uni.redirectTo({
-						url: '/pages/user/login'
-					});
-				} else {
-					if (showError) {
-						uni.showToast({
-							title: res.data.msg,
-							duration: 2000,
-							icon: 'none'
-						})
-					}
-					reject(res.data)
-				}
-			},
-			fail: (res) => {
-				if (loading) uni.hideLoading()
-				reject(res)
-			}
-		})
-	})
+  if (res.status === 1) return res.data
+  else {
+    if (res.status === -1) {
+      $.remove('token')
+      $.remove('id')
+      $.remove('userinfo')
+      uni.redirectTo({ url: '/pages/user/login' })
+    }
+    throw new Error(res.msg)
+  }
 }
 
-export default {
-	http
+export async function upload(filePath, formData) {
+  const response = await uni.uploadFile({
+    url: api_url + 'upload',
+    filePath,
+    name: 'file',
+    header: {
+      token: $.get('token') || '',
+      id: $.get('id') || 0
+    },
+    formData
+  })
+
+  if (response[0]) throw new Error(response[0].errMsg)
+
+  const status = response[1].statusCode
+  const data = response[1].data
+  if (status !== 200) throw new Error(data)
+
+  const res = JSON.parse(data)
+  if (res.status === 1) return res.data
+  else {
+    if (res.status === -1) {
+      $.remove('token')
+      $.remove('id')
+      $.remove('userinfo')
+      uni.redirectTo({ url: '/pages/user/login' })
+    }
+    throw new Error(res.msg)
+  }
+}
+
+export async function login() {
+  const response = await uni.login({ provider: 'weixin' })
+
+  if (response[0]) throw new Error(response[0].errMsg)
+
+  const status = response[1].statusCode
+  if (status !== 200) throw new Error('fail to get wechat code')
+  return response[1].code
+}
+
+export async function url() {
+  return config['api_url'] || ''
 }
