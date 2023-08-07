@@ -67,10 +67,11 @@ export async function login() {
   const response = await uni.login({ provider: 'weixin' })
 
   if (response[0]) throw new Error(response[0].errMsg)
+  console.log(response)
 
-  const status = response[1].statusCode
-  if (status !== 200) throw new Error('fail to get wechat code')
-  return response[1].code
+  const { code } = response[1]
+  if (!code) throw new Error('fail to get wechat code')
+  return code
 }
 
 export async function url() {
