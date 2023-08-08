@@ -203,6 +203,10 @@ export default {
         this.$f.set('userinfo', data)
         this.userinfo = data
       } catch (e) {
+        this.$f.remove('userinfo')
+        this.$f.remove('id')
+        this.$f.remove('token')
+        this.$f.remove('openid')
         uni.showToast({
           title: e.message,
           duration: 3000,

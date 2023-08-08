@@ -235,6 +235,10 @@ export default {
         const data = await this.$h.http('userinfo', {}, 'GET')
         this.userinfo = data
       } catch (e) {
+        this.$f.remove('userinfo')
+        this.$f.remove('id')
+        this.$f.remove('token')
+        this.$f.remove('openid')
         uni.showToast({
           title: e.msg,
           duration: 3000,

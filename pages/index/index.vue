@@ -106,8 +106,8 @@ export default {
   onShareAppMessage() {
     return {
       path: '/pages/index/index?id=' + this.userinfo.id,
-      title: this.config.share.title || 'AI文档分析利器，不来试试吗？',
-      imageUrl: this.config.share.img || '../../static/share.jpg'
+      title: this.config.shareTitle || 'AI文档分析利器，不来试试吗？',
+      imageUrl: this.config.shareImg || '../../static/share.jpg'
     }
   },
   methods: {
@@ -163,6 +163,10 @@ export default {
         this.$f.set('userinfo', data)
       } catch (e) {
         this.isLogin = false
+        this.$f.remove('userinfo')
+        this.$f.remove('id')
+        this.$f.remove('token')
+        this.$f.remove('openid')
         uni.showToast({ title: e.message, icon: 'none' })
       }
     },
