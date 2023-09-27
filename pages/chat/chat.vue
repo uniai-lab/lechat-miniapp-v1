@@ -19,17 +19,16 @@
       <view class="chat-content" v-for="(item, index) in chat" :key="index" :data-self="item.type">
         <u--image showLoading :src="item.avatar" width="76rpx" height="76rpx" shape="circle" fade duration="450" />
         <view class="hr" />
-        <view class="content-view">
-          <rich-text :nodes="item.content"></rich-text>
+        <view class="content-view" @longpress="copy" :data-item="item.content">
+          <mp-html :content="item.marked || item.content" />
+          <view v-show="!item.type && item.chatId" class="copy-tip">长按复制</view>
         </view>
       </view>
-      <view class="retry-content" v-show="showRetry">
+      <view class="retry-content" v-if="showRetry">
         <text class="retry-text">网络错误，请</text>
         <view class="retry-btn-content" @tap="loopChat">
           <text class="retry-btn-text">重试</text>
-          <view>
-            <image class="retry-image" src="../../static/retry.png"></image>
-          </view>
+          <uni-icons type="refreshempty" size="13"></uni-icons>
         </view>
       </view>
       <view id="bottomView" class="bottom-view"></view>
@@ -53,7 +52,24 @@
   </view>
 </template>
 <script>
+import mpHtml from 'mp-html/dist/uni-app/components/mp-html/mp-html'
+import { Marked } from 'marked'
+import { markedHighlight } from 'marked-highlight'
+import hljs from 'highlight.js/lib/common'
+import 'highlight.js/scss/monokai.scss'
+
+const marked = new Marked(
+  markedHighlight({
+    langPrefix: 'hljs language-',
+    highlight(code, lang) {
+      const language = hljs.getLanguage(lang) ? lang : 'plaintext'
+      return hljs.highlight(code, { language }).value
+    }
+  })
+)
+
 export default {
+  components: { mpHtml },
   data() {
     return {
       // 导航栏和状态栏高度
@@ -70,14 +86,11 @@ export default {
       userinfo: {},
       config: {},
       bottomView: '',
-      showBottom: false,
+      showBottom: true,
       showRetry: false,
       keyboardHeight: 0,
       unload: false
     }
-  },
-  onShow() {
-    this.showBottom = true
   },
   onLoad(e) {
     if (e && parseInt(e.dialogId)) {
@@ -85,7 +98,7 @@ export default {
       this.dialogId = parseInt(e.dialogId) || 0
     } else {
       this.title = '任意聊天'
-      this.placeholder = '输入任意内容'
+      this.placeholder = '随便聊聊'
     }
 
     if (e && e.title)
@@ -179,6 +192,7 @@ export default {
           const data = await this.getChat()
 
           if (!data || data.dialogId !== this.dialogId) break
+          data.marked = marked.parse(data.content) //.replace(/<pre>/g, "<pre class='hljs'>")
 
           // check processing chat, chatId=0
           if (this.chat[this.chat.length - 1].chatId === 0) this.chat[this.chat.length - 1] = data
@@ -210,16 +224,13 @@ export default {
     // 获取聊天列表数据
     async init() {
       try {
+        this.chat = []
         const data = await this.$h.http('list-chat', { dialogId: this.dialogId })
-        this.chat = data
-        if (data.length > 0) {
-          this.chat[0].content = this.chat[0].content.replace(/{bold}/, '<span style="font-weight:700;">')
-          this.chat[0].content = this.chat[0].content.replace(/{\/bold}/, '</span>')
+        for (const item of data) {
+          item.marked = marked.parse(item.content) //.replace(/<pre>/g, "<pre class='hljs'>")
+          this.chat.push(item)
         }
-        this.scrollToBottom()
-        this.showBottom = true
-        this.dialogId = data[0].dialogId // cover dialogId
-        await this.loopChat()
+        setTimeout(this.loopChat, 300)
       } catch (e) {
         uni.showToast({
           title: e.message,
@@ -245,198 +256,218 @@ export default {
           icon: 'none'
         })
       }
+    },
+    copy: function (e) {
+      let item = e.currentTarget.dataset.item
+      wx.setClipboardData({
+        data: item,
+        success: function (res) {
+          uni.showToast({
+            title: '复制成功',
+            duration: 2000,
+            icon: 'none'
+          })
+        }
+      })
     }
   }
 }
 </script>
-<style lang="scss">
-.retry-content {
-  justify-content: flex-start;
-  display: flex;
-  margin-left: 130rpx;
-  align-items: center;
-  padding-bottom: 30rpx;
-}
+<style lang="scss" scoped>
+.page {
+  .navbar {
+    position: fixed;
+    width: 100%;
+    top: 0;
+    background: #eefffe;
 
-.retry-text {
-  color: #ef2020;
-  font-size: 28rpx;
-}
+    .navigation-bar {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
 
-.retry-btn-content {
-  display: flex;
-  align-items: center;
-}
+      .back {
+        font-size: 35rpx;
+        color: #000;
+        margin-left: 10rpx;
+      }
 
-.retry-btn-text {
-  color: #0014c2;
-  font-size: 28rpx;
-}
+      .navbar-title {
+        font-size: 35rpx;
+        max-width: 60vw;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-weight: 400;
+      }
+    }
+  }
 
-.retry-image {
-  width: 25rpx;
-  height: 25rpx;
-  margin-left: 5rpx;
-  background-image: url('../../static/retry.png');
-  background-repeat: no-repeat;
-  background-size: contain;
-}
+  .chat {
+    background: linear-gradient(to bottom, #eefffe, #fdfdfd);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
 
-.navbar {
-  position: fixed;
-  width: 100%;
-  top: 0;
-  background: #eefffe;
+    .bottom-view {
+      height: calc(130rpx + constant(safe-area-inset-bottom));
+      height: calc(130rpx + env(safe-area-inset-bottom));
+    }
 
-  .navigation-bar {
+    .chat-content {
+      display: flex;
+      align-items: center;
+      padding: 20rpx;
+      animation: fade-in 0.3s ease-in forwards;
+
+      &:last-child {
+        padding-bottom: 40rpx;
+      }
+
+      &:first-child {
+        padding-top: 40rpx;
+      }
+
+      .avatar {
+        flex-shrink: 0;
+      }
+
+      .hr {
+        width: 4vw;
+        flex-shrink: 0;
+      }
+
+      .content-view {
+        background: #ffffff;
+        box-shadow: 0rpx 0rpx 8rpx 0rpx #e9e9e9;
+        border-radius: 29rpx;
+        padding: 28rpx;
+        color: #000;
+        font-size: 30.53rpx;
+        word-wrap: break-word;
+        max-width: 76%;
+
+        .copy-tip {
+          margin-top: 6rpx;
+          text-align: right;
+          font-size: 26rpx;
+          color: #ccc;
+        }
+      }
+
+      &[data-self='true'] {
+        flex-direction: row-reverse;
+
+        .content-view {
+          color: #fff;
+          background: #00a29c;
+          box-shadow: 0rpx 0rpx 8rpx 0rpx #e9e9e9;
+        }
+      }
+    }
+    .retry-content {
+      justify-content: flex-start;
+      display: flex;
+      margin-left: 130rpx;
+      align-items: center;
+      padding-bottom: 30rpx;
+
+      .retry-text {
+        color: #ef2020;
+        font-size: 28rpx;
+      }
+
+      .retry-btn-content {
+        display: flex;
+        align-items: center;
+
+        .retry-btn-text {
+          color: #0014c2;
+          font-size: 28rpx;
+        }
+
+        .retry-image {
+          width: 25rpx;
+          height: 25rpx;
+          margin-left: 5rpx;
+          background-image: url('../../static/retry.png');
+          background-repeat: no-repeat;
+          background-size: contain;
+        }
+      }
+    }
+  }
+  .input-bottom {
+    animation: slide-fade-in 0.2s ease-in forwards;
+    background: transparent;
+    border: none;
     display: flex;
-    flex-direction: row;
-    align-items: center;
-
-    .back {
-      font-size: 35rpx;
-      color: #000;
-      margin-left: 10rpx;
-    }
-
-    .navbar-title {
-      font-size: 35rpx;
-      max-width: 60vw;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      font-weight: 400;
-    }
-  }
-}
-
-.chat {
-  background: linear-gradient(to bottom, #eefffe, #fdfdfd);
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-
-  .bottom-view {
-    height: calc(130rpx + constant(safe-area-inset-bottom));
-    height: calc(130rpx + env(safe-area-inset-bottom));
-  }
-}
-
-.chat-content {
-  display: flex;
-  align-items: center;
-  padding: 20rpx;
-  animation: fade-in 0.3s ease-in forwards;
-
-  &:last-child {
-    padding-bottom: 40rpx;
-  }
-
-  &:first-child {
-    padding-top: 40rpx;
-  }
-
-  .avatar {
-    flex-shrink: 0;
-  }
-
-  .hr {
-    width: 4vw;
-    flex-shrink: 0;
-  }
-
-  .content-view {
-    background: #ffffff;
-    box-shadow: 0rpx 0rpx 8rpx 0rpx #e9e9e9;
-    border-radius: 29rpx;
-    padding: 28rpx;
-    color: #000;
-    font-size: 30.53rpx;
-    word-wrap: break-word;
-    max-width: 70%;
-  }
-
-  &[data-self='true'] {
-    flex-direction: row-reverse;
-
-    .content-view {
-      color: #fff;
-      background: #00a29c;
-      box-shadow: 0rpx 0rpx 8rpx 0rpx #e9e9e9;
-    }
-  }
-}
-
-.input-bottom {
-  animation: slide-fade-in 0.2s ease-in forwards;
-  background: transparent;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  justify-items: center;
-  flex-wrap: wrap;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  min-height: 130rpx;
-  margin-bottom: constant(safe-area-inset-bottom);
-  margin-bottom: env(safe-area-inset-bottom);
-
-  .input {
-    height: 80rpx;
-    background: #fff;
-    border-radius: 100rem;
-    font-size: 30rpx;
-    width: 420rpx;
-    padding: 0 40rpx;
-    border: solid 2px #00a29c;
-
-    &.disable {
-      border: solid 2px #ccc;
-    }
-  }
-
-  .bottom {
-    margin-left: 22rpx;
-    width: 180rpx;
-    height: 90rpx;
-    background: linear-gradient(127deg, #36ad6a 0%, #00a29c 100%);
-    border-radius: 100rem;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin-right: 0;
+    justify-items: center;
+    flex-wrap: wrap;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    min-height: 130rpx;
+    margin-bottom: constant(safe-area-inset-bottom);
+    margin-bottom: env(safe-area-inset-bottom);
 
-    &.disable {
-      background: #ccc;
-    }
-
-    .bottom-title {
+    .input {
+      height: 80rpx;
+      background: #fff;
+      border-radius: 100rem;
       font-size: 30rpx;
-      line-height: 30rpx;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 5rpx;
+      width: 420rpx;
+      padding: 0 40rpx;
+      border: solid 2px #00a29c;
+
+      &.disable {
+        border: solid 2px #ccc;
+      }
     }
 
-    .bottom-number {
-      font-size: 23rpx;
-      font-weight: 400;
-      color: rgba(255, 255, 255, 0.73);
-      line-height: 10px;
-      font-size: 10px;
-      margin-top: 2px;
-    }
-  }
+    .bottom {
+      margin-left: 22rpx;
+      width: 180rpx;
+      height: 90rpx;
+      background: linear-gradient(127deg, #36ad6a 0%, #00a29c 100%);
+      border-radius: 100rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0;
 
-  .placeholder {
-    flex-grow: 1;
-    flex-basis: 100%;
+      &.disable {
+        background: #ccc;
+      }
+
+      .bottom-title {
+        font-size: 30rpx;
+        line-height: 30rpx;
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 5rpx;
+      }
+
+      .bottom-number {
+        font-size: 23rpx;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.73);
+        line-height: 10px;
+        font-size: 10px;
+        margin-top: 2px;
+      }
+    }
+
+    .placeholder {
+      flex-grow: 1;
+      flex-basis: 100%;
+    }
   }
 }
 

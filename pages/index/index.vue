@@ -1,5 +1,5 @@
 <template>
-  <view class="u-page content">
+  <view class="content">
     <view class="navigation-container" :style="{ height: navigationBarAndStatusBarHeight }">
       <!--空白来占位状态栏-->
       <view :style="{ height: statusBarHeight }"></view>
@@ -8,23 +8,20 @@
         <image src="../../static/logo.png" class="logo" mode="aspectFit"></image>
       </view>
     </view>
-    <view class="u-demo-block">
-      <view class="u-demo-block__content">
-        <u-row class="head-block">
+    <view class="head">
+      <view class="user">
+        <u-row>
           <u-col span="3">
             <view class="img-center">
-              <image :src="userinfo.avatar" v-if="isLogin"></image>
-              <image src="../../static/avatar.png" v-else @tap="login"></image>
+              <image mode="aspectFit" :src="userinfo.avatar || '../../static/avatar.png'" />
             </view>
           </u-col>
           <u-col span="9">
-            <view class="user-login" v-if="!isLogin" @tap="login()">
-              <text>点击登录</text>
-            </view>
-            <view class="user-info" v-if="isLogin" @tap="user()">
+            <view class="user-info" v-if="userinfo.id" @tap="user()">
               <text>{{ userinfo.name }}</text>
-              <image class="arrow" src="../../static/arrow.png"></image>
+              <uni-icons class="arrow" type="right" size="25"></uni-icons>
             </view>
+            <view class="user-login" v-else @tap="login()">点击登录</view>
             <view class="user-tip">
               <text>大模型文献分析与对话小程序</text>
             </view>
@@ -32,14 +29,14 @@
         </u-row>
       </view>
 
-      <view class="upload">
+      <view class="func">
         <view class="block" @tap="upload()">
-          <image src="../../static/upload.png" mode=""></image>
+          <image src="../../static/upload.png"></image>
           <view class="text">文献上传</view>
         </view>
         <view class="block" @tap="chat(null)">
-          <image src="../../static/chat.png" mode=""></image>
-          <view class="text">任意聊天</view>
+          <image src="../../static/chat.png"></image>
+          <view class="text">随便聊聊</view>
         </view>
       </view>
     </view>
@@ -50,21 +47,15 @@
     </view>
 
     <view class="document">
-      <view class="documents-wrapper" v-if="isLogin && document.length">
-        <view class="u-demo-block__content" v-for="(item, index) in document" :key="index">
-          <u-row customStyle="margin-bottom: 10px">
+      <view class="list" v-if="list.length">
+        <view class="item" v-for="(item, index) in list" :key="index">
+          <u-row>
             <u-col span="2" @tap="chat(item.dialogId, item.fileName)">
-              <view class="bg-purple-light img-file">
-                <image src="../../static/pdf.png" shape="square"></image>
-              </view>
+              <image src="../../static/pdf.png" mode="widthFix" />
             </u-col>
             <u-col span="8" @tap="chat(item.dialogId, item.fileName)">
-              <view class="file-name">
-                <text>{{ item.fileName }}</text>
-              </view>
-              <view class="file-date">
-                <text>{{ item.date }} {{ item.size }}</text>
-              </view>
+              <view class="file-name"> {{ item.fileName }} </view>
+              <view class="file-date"> {{ item.date }} {{ item.size }} </view>
             </u-col>
             <u-col span="2" @tap="preview(item)">
               <view class="icon iconfont icon-yulan"></view>
@@ -72,9 +63,9 @@
           </u-row>
         </view>
       </view>
-      <view class="document-empty" v-else @tap="upload()">
-        <image src="../../static/null.png" class="img"></image>
-        <text class="tip">您未上传文档</text>
+      <view class="empty" v-else @tap="upload()">
+        <image src="../../static/null.png"></image>
+        <text class="tip">未上传文档</text>
       </view>
     </view>
   </view>
@@ -89,67 +80,57 @@ export default {
       menuButtonHeight: wx.getStorageSync('menuButtonHeight') + 'px',
       navigationBarAndStatusBarHeight:
         wx.getStorageSync('statusBarHeight') + wx.getStorageSync('navigationBarHeight') + 'px',
-      isLogin: false,
       userinfo: {
         name: 'loading...'
       },
       config: {},
-      document: []
+      list: []
     }
   },
   onLoad(e) {
     if (e && e.id) this.$f.set('fid', e.id)
-    this.getConfig()
     this.init()
   },
-  onShow() {},
   onShareAppMessage() {
     return {
       path: '/pages/index/index?id=' + this.userinfo.id,
-      title: this.config.shareTitle || 'AI文档分析利器，不来试试吗？',
-      imageUrl: this.config.shareImg || '../../static/share.jpg'
+      title: this.config.shareTitle || 'AI大模型文档分析工具，来试试吗？',
+      imageUrl: this.config.shareImg
     }
   },
   methods: {
     // 登录验证
     async init() {
       // 判断是否登录成功
-      if (this.$f.get('token') && this.$f.get('id') && this.$f.get('openid')) {
-        this.getUserInfo()
-        this.documentList()
-      } else {
-        try {
+      try {
+        uni.showLoading({ title: '加载中' })
+        if (!(this.$f.get('token') && this.$f.get('id') && this.$f.get('openid'))) {
           const code = await this.$h.login()
           const data = await this.$h.http('login', { code, fid: this.$f.get('fid') || 0 })
           this.$f.set('token', data.token)
           this.$f.set('id', data.id)
           this.$f.set('openid', data.wxOpenId)
-          this.documentList()
-          this.getUserInfo()
-        } catch (e) {
-          uni.showToast({
-            title: e.message,
-            icon: 'none'
-          })
         }
+        await this.getConfig()
+        await this.getUserInfo()
+        await this.documentList()
+      } catch (e) {
+        console.error(e)
+        uni.showToast({
+          title: e.message,
+          icon: 'none',
+          duration: 3000
+        })
+      } finally {
+        uni.hideLoading()
       }
     },
 
     // 点击上传
     upload() {
-      if (!this.isLogin)
-        return uni.navigateTo({
-          url: '/pages/user/login'
-        })
-
-      if (!this.userinfo.phone)
-        return uni.navigateTo({
-          url: '/pages/user/login'
-        })
-
       // 判断是否可以上传
-      if (this.userinfo.chance.totalUploadChance <= 0)
-        return uni.showToast({ title: '本周上传机会已经用完', duration: 3000, icon: 'none' })
+      if (!this.userinfo.chance.totalUploadChance)
+        return uni.showToast({ title: '上传机会已经用完', duration: 3000, icon: 'none' })
 
       this.choose(0)
     },
@@ -159,10 +140,8 @@ export default {
       try {
         const data = await this.$h.http('userinfo', {}, 'GET')
         this.userinfo = data
-        this.isLogin = true
         this.$f.set('userinfo', data)
       } catch (e) {
-        this.isLogin = false
         this.$f.remove('userinfo')
         this.$f.remove('id')
         this.$f.remove('token')
@@ -188,7 +167,7 @@ export default {
           data[i].size = this.$f.formatBytes(data[i].fileSize, 0)
           data[i].date = this.$f.formatDate(new Date(data[i].updatedAt))
         }
-        this.document = data
+        this.list = data
       } catch (e) {
         uni.showToast({
           title: e.message,
@@ -290,24 +269,13 @@ export default {
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .content {
   background: linear-gradient(to bottom, #eefffe, #fff);
   width: 100vw;
   height: 100vh;
   overflow: hidden;
   padding: 0;
-
-  .u-demo-block {
-    .head-block {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    margin-top: 50rpx;
-  }
 
   .navigation-container {
     width: 100vw;
@@ -320,172 +288,155 @@ export default {
       }
     }
   }
-}
 
-.document-empty {
-  min-height: 60vw;
-  width: 100vw;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
+  .head {
+    margin-top: 50rpx;
+    .user {
+      .img-center {
+        margin-left: 32rpx;
+        image {
+          width: 100rpx;
+          height: 100rpx;
+        }
+      }
+    }
+    .user-login {
+      display: flex;
+      align-items: center;
 
-  .img {
-    width: 30vw;
-    height: 30vw;
-    background: rgba(0, 0, 0, 0);
-  }
+      text {
+        color: #00a29c;
+        font-size: 50rpx;
+        font-weight: 400;
+      }
+    }
 
-  .tip {
-    color: #999;
-    font-size: 14px;
-  }
-}
+    .user-info {
+      display: flex;
+      align-items: center;
 
-.img-center {
-  margin-left: 35rpx;
-}
+      text {
+        color: #000000;
+        font-size: 40rpx;
+        font-weight: 400;
+      }
 
-.img-center image {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 10rpx;
-  vertical-align: middle;
-}
+      .arrow {
+        margin-left: 20rpx;
+      }
+    }
 
-.user-login {
-  display: flex;
-  align-items: center;
+    .user-tip {
+      display: flex;
+      align-items: center;
+      margin-top: 10rpx;
 
-  text {
-    color: #00a29c;
-    font-size: 50rpx;
-    font-weight: 400;
-  }
-}
+      text {
+        color: #707070;
+        font-size: 35rpx;
+        line-height: 40rpx;
+        font-weight: 400;
+      }
+    }
+    .func {
+      margin: 50rpx 0;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: space-around;
 
-.user-info {
-  display: flex;
-  align-items: center;
+      .block {
+        width: 40%;
+        height: 200rpx;
+        border-radius: 10rpx;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 10rpx;
+        text-align: center;
+        background: #00a29c;
 
-  text {
-    color: #000000;
-    font-size: 40rpx;
-    font-weight: 400;
-  }
-
-  .arrow {
-    width: 20.99rpx;
-    height: 32.44rpx;
-    margin-left: 20rpx;
-    background-image: url('../../static/arrow.png');
-    background-repeat: no-repeat;
-    background-size: contain;
-  }
-}
-
-.user-tip {
-  display: flex;
-  align-items: center;
-  margin-top: 10rpx;
-
-  text {
-    color: #707070;
-    font-size: 35rpx;
-    line-height: 40rpx;
-    font-weight: 400;
-  }
-}
-
-.upload {
-  margin: 50rpx 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: space-around;
-
-  .block {
-    width: 40%;
-    height: 200rpx;
-    border-radius: 10rpx;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 10rpx;
-    text-align: center;
-    background: #00a29c;
-
-    image {
-      width: 100rpx;
-      height: 100rpx;
+        image {
+          width: 100rpx;
+          height: 100rpx;
+        }
+      }
     }
   }
-}
 
-.file {
-  margin-left: 32.44rpx;
-}
+  .file {
+    margin-left: 32rpx;
+    .file-text {
+      color: #000000;
+      font-size: 50rpx;
+      font-weight: 500;
+    }
 
-.file-text {
-  color: #000000;
-  font-size: 50rpx;
-  font-weight: 500;
-}
-
-.file-num {
-  font-size: 30rpx;
-  color: #5b5b5b;
-  margin-left: 15rpx;
-}
-
-.document {
-  padding: 50rpx 0;
-  height: calc(45vh + constant(safe-area-inset-bottom));
-  height: calc(45vh + env(safe-area-inset-bottom));
-  overflow-y: scroll;
-}
-
-.img-file {
-  margin-left: 32.44rpx;
-  image {
-    width: 70rpx;
-    height: 70rpx;
+    .file-num {
+      font-size: 30rpx;
+      color: #5b5b5b;
+      margin-left: 15rpx;
+    }
   }
-}
 
-.file-name {
-  margin-right: 10rpx;
-  color: #000000;
-  font-size: 30.53rpx;
-  font-weight: 700;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
+  .document {
+    padding: 20rpx 0;
+    height: calc(45vh + constant(safe-area-inset-bottom));
+    height: calc(45vh + env(safe-area-inset-bottom));
+    overflow-y: scroll;
+    .list {
+      .item {
+        margin: 25rpx 0;
+        image {
+          width: 75rpx;
+          height: 75rpx;
+          margin-left: 32rpx;
+        }
+        .file-name {
+          margin-right: 10rpx;
+          color: #000000;
+          font-size: 30.53rpx;
+          font-weight: 700;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
 
-.file-date {
-  margin-top: 10rpx;
-  color: #707070;
-  font-size: 22.9rpx;
-}
+        .file-date {
+          margin-top: 10rpx;
+          color: #707070;
+          font-size: 22.9rpx;
+        }
 
-.iconfont {
-  color: #00a29c;
-  text-align: right;
-  margin-right: 40rpx;
-}
+        .iconfont {
+          color: #00a29c;
+          text-align: right;
+          margin-right: 40rpx;
+        }
+      }
+    }
 
-.chat {
-  position: fixed;
-  right: 50rpx;
-  bottom: 156rpx;
-  z-index: 9999;
-}
+    .empty {
+      min-height: 60vw;
+      width: 100vw;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
 
-.chat .chat-image image {
-  width: 108rpx;
-  height: 105rpx;
+      .img {
+        width: 30vw;
+        height: 30vw;
+        background: rgba(0, 0, 0, 0);
+      }
+
+      .tip {
+        color: #999;
+        font-size: 14px;
+      }
+    }
+  }
 }
 </style>
