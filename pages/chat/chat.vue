@@ -20,8 +20,10 @@
         <u--image showLoading :src="item.avatar" width="76rpx" height="76rpx" shape="circle" fade duration="450" />
         <view class="hr" />
         <view class="content-view" @longpress="copy" :data-item="item.content">
-          <mp-html :content="item.marked || item.content" />
-          <view v-show="!item.type && item.chatId" class="copy-tip">长按复制</view>
+          <towxml :nodes="item.marked" />
+          <view v-show="!item.type && item.chatId" class="copy-tip" @tap="copy" :data-item="item.content">
+            长按复制
+          </view>
         </view>
       </view>
       <view class="retry-content" v-if="showRetry">
@@ -52,24 +54,11 @@
   </view>
 </template>
 <script>
-import mpHtml from 'mp-html/dist/uni-app/components/mp-html/mp-html'
-import { Marked } from 'marked'
-import { markedHighlight } from 'marked-highlight'
-import hljs from 'highlight.js/lib/common'
-import 'highlight.js/scss/monokai.scss'
-
-const marked = new Marked(
-  markedHighlight({
-    langPrefix: 'hljs language-',
-    highlight(code, lang) {
-      const language = hljs.getLanguage(lang) ? lang : 'plaintext'
-      return hljs.highlight(code, { language }).value
-    }
-  })
-)
+import towxml from '@/static/towxml/towxml'
+import marked from '@/static/towxml'
 
 export default {
-  components: { mpHtml },
+  components: { towxml },
   data() {
     return {
       // 导航栏和状态栏高度
@@ -93,18 +82,16 @@ export default {
     }
   },
   onLoad(e) {
+    this.unload = false
     if (e && parseInt(e.dialogId)) {
       this.title = e.title
       this.dialogId = parseInt(e.dialogId) || 0
     } else {
-      this.title = '任意聊天'
-      this.placeholder = '随便聊聊'
+      this.title = '随便聊聊'
+      this.placeholder = '随便说两句'
     }
 
-    if (e && e.title)
-      uni.setNavigationBarTitle({
-        title: e.title
-      })
+    if (e && e.title) uni.setNavigationBarTitle({ title: e.title })
 
     this.userinfo = this.$f.get('userinfo')
     this.config = this.$f.get('config')
@@ -147,38 +134,22 @@ export default {
         this.chat.push({
           avatar: this.userinfo.avatar || this.config.DEFAULT_AVATAR_USER,
           content: input,
+          marked: marked(input, 'markdown'),
           dialogId: this.dialogId,
           userId: this.userinfo.id,
           chatId: 0,
           type: true
         })
-        this.chat.push({
-          avatar: this.config.DEFAULT_AVATAR_AI,
-          content: '🤔️大模型思考中...',
-          dialogId: this.dialogId,
-          userId: this.userinfo.id,
-          chatId: 0,
-          type: false
-        })
         this.scrollToBottom()
 
-        const data = await this.$h.http('chat-stream', {
-          input,
-          dialogId: this.dialogId
-        })
-
+        const data = await this.$h.http('chat-stream', { input, dialogId: this.dialogId })
         // update user chat content
-        this.chat[this.chat.length - 2] = data
+        data.marked = marked(data.content, 'markdown')
+        this.chat[this.chat.length - 1] = data
         this.dialogId = data.dialogId
         this.loopChat()
       } catch (e) {
-        uni.showToast({
-          title: e.message,
-          duration: 3000,
-          icon: 'none'
-        })
-        this.chat.pop()
-        this.chat.pop()
+        uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
         this.sending = false
       }
     },
@@ -187,27 +158,34 @@ export default {
       let count = 0
       while (1) {
         try {
-          if (this.unload) break
+          if (this.unload) {
+            console.log('1')
+            break
+          }
           this.sending = true
           const data = await this.getChat()
 
-          if (!data || data.dialogId !== this.dialogId) break
-          data.marked = marked.parse(data.content) //.replace(/<pre>/g, "<pre class='hljs'>")
+          if (!data) break
+          if (data.dialogId !== this.dialogId) {
+            console.log(data.dialogId)
+            console.log(this.dialogId)
+            break
+          }
+          data.marked = marked(data.content, 'markdown')
 
           // check processing chat, chatId=0
           if (this.chat[this.chat.length - 1].chatId === 0) this.chat[this.chat.length - 1] = data
           // check new chat
           if (this.chat[this.chat.length - 1].chatId !== data.chatId) this.chat.push(data)
 
-          if (data.chatId > 0) break
+          if (data.chatId > 0) {
+            console.log('3')
+            break
+          }
         } catch (e) {
           count++
           if (count >= 10) {
-            uni.showToast({
-              title: e.message,
-              duration: 3000,
-              icon: 'none'
-            })
+            uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
             this.showRetry = true
             break
           }
@@ -227,16 +205,13 @@ export default {
         this.chat = []
         const data = await this.$h.http('list-chat', { dialogId: this.dialogId })
         for (const item of data) {
-          item.marked = marked.parse(item.content) //.replace(/<pre>/g, "<pre class='hljs'>")
+          this.dialogId = item.dialogId
+          item.marked = marked(item.content, 'markdown')
           this.chat.push(item)
         }
-        setTimeout(this.loopChat, 300)
+        this.loopChat()
       } catch (e) {
-        uni.showToast({
-          title: e.message,
-          duration: 3000,
-          icon: 'none'
-        })
+        uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
       }
     },
 
@@ -342,14 +317,14 @@ export default {
         background: #ffffff;
         box-shadow: 0rpx 0rpx 8rpx 0rpx #e9e9e9;
         border-radius: 29rpx;
-        padding: 28rpx;
+        padding: 0 28rpx;
         color: #000;
         font-size: 30.53rpx;
         word-wrap: break-word;
         max-width: 76%;
 
         .copy-tip {
-          margin-top: 6rpx;
+          margin: 6rpx 0;
           text-align: right;
           font-size: 26rpx;
           color: #ccc;

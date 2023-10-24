@@ -1,40 +1,41 @@
 {
-	"easycom": {
-		"^u-(.*)": "uview-ui/components/u-$1/u-$1.vue"
-	},
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
-		{
-			"path": "pages/index/index",
-			"style": {
-				"navigationStyle": "custom",
-				"disableScroll": true
-			}
-		},
-		{
-			"path": "pages/user/login",
-			"style": {
-				"navigationBarTitleText": "登录",
-				"disableScroll": true
-			}
-		}, {
-			"path": "pages/user/user",
-			"style": {
-				"navigationBarTitleText": "个人中心",
-				"disableScroll": true
-			}
-		},
-		{
-			"path": "pages/chat/chat",
-			"style": {
-				"navigationStyle": "custom",
-				"backgroundColorTop": "#eefffe",
-				"backgroundColorBottom": "#fff"
-			}
-		}
-	],
-	"globalStyle": {
-		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "LeChat",
-		"navigationBarBackgroundColor": "#eefffe"
-	}
+  "easycom": {
+    "^u-(.*)": "uview-ui/components/u-$1/u-$1.vue"
+  },
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/chat/chat",
+      "style": {
+        "navigationStyle": "custom",
+        "usingComponents": {
+          "towxml": "static/towxml/towxml"
+        }
+      }
+    },
+    {
+      "path": "pages/user/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/user/user",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "LeChat",
+    "navigationBarBackgroundColor": "#eefffe",
+
+    "disableScroll": true
+  }
 }

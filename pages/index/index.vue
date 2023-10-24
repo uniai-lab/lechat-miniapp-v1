@@ -1,14 +1,15 @@
 <template>
   <view class="content">
-    <view class="navigation-container" :style="{ height: navigationBarAndStatusBarHeight }">
+    <view class="navigation" id="nav">
       <!--空白来占位状态栏-->
-      <view :style="{ height: statusBarHeight }"></view>
+      <view :style="{ height: `${statusBarHeight}px` }"></view>
       <!--自定义导航栏-->
-      <view class="navigation-bar" :style="{ height: navigationBarHeight }">
+      <view class="bar" :style="{ height: `${navigationBarHeight}px` }">
         <image src="../../static/logo.png" class="logo" mode="aspectFit"></image>
       </view>
     </view>
-    <view class="head">
+
+    <view class="head" id="head">
       <view class="user">
         <u-row>
           <u-col span="3">
@@ -22,13 +23,10 @@
               <uni-icons class="arrow" type="right" size="25"></uni-icons>
             </view>
             <view class="user-login" v-else @tap="login()">点击登录</view>
-            <view class="user-tip">
-              <text>大模型文献分析与对话小程序</text>
-            </view>
+            <view class="user-tip">大模型文献分析与对话小程序</view>
           </u-col>
         </u-row>
       </view>
-
       <view class="func">
         <view class="block" @tap="upload()">
           <image src="../../static/upload.png"></image>
@@ -41,12 +39,12 @@
       </view>
     </view>
 
-    <view class="file">
+    <view class="file" id="file">
       <text class="file-text">我的文档</text>
       <text class="file-num">剩余可上传{{ userinfo.chance.totalUploadChance || 0 }}个文档</text>
     </view>
 
-    <view class="document">
+    <view class="document" :style="{ height: `${documentHeight}px` }">
       <view class="list" v-if="list.length">
         <view class="item" v-for="(item, index) in list" :key="index">
           <u-row>
@@ -64,7 +62,7 @@
         </view>
       </view>
       <view class="empty" v-else @tap="upload()">
-        <image src="../../static/null.png"></image>
+        <image class="img" src="../../static/null.png"></image>
         <text class="tip">未上传文档</text>
       </view>
     </view>
@@ -75,14 +73,13 @@
 export default {
   data() {
     return {
-      statusBarHeight: wx.getStorageSync('statusBarHeight') + 'px',
-      navigationBarHeight: wx.getStorageSync('navigationBarHeight') + 'px',
-      menuButtonHeight: wx.getStorageSync('menuButtonHeight') + 'px',
-      navigationBarAndStatusBarHeight:
-        wx.getStorageSync('statusBarHeight') + wx.getStorageSync('navigationBarHeight') + 'px',
-      userinfo: {
-        name: 'loading...'
-      },
+      statusBarHeight: wx.getStorageSync('statusBarHeight'),
+      navigationBarHeight: wx.getStorageSync('navigationBarHeight'),
+      windowHeight: wx.getStorageSync('windowHeight'),
+      navHeight: 0,
+      headHeight: 0,
+      fileHeight: 0,
+      userinfo: { name: 'loading...' },
       config: {},
       list: []
     }
@@ -90,12 +87,18 @@ export default {
   onLoad(e) {
     if (e && e.id) this.$f.set('fid', e.id)
     this.init()
+    this.setDocumentHeight()
   },
   onShareAppMessage() {
     return {
       path: '/pages/index/index?id=' + this.userinfo.id,
       title: this.config.shareTitle || 'AI大模型文档分析工具，来试试吗？',
       imageUrl: this.config.shareImg
+    }
+  },
+  computed: {
+    documentHeight() {
+      return this.windowHeight - this.headHeight - this.fileHeight - this.navHeight
     }
   },
   methods: {
@@ -125,7 +128,27 @@ export default {
         uni.hideLoading()
       }
     },
-
+    setDocumentHeight() {
+      const query = uni.createSelectorQuery()
+      query
+        .select('#nav')
+        .boundingClientRect(rect => {
+          this.navHeight = rect.height
+        })
+        .exec()
+      query
+        .select('#head')
+        .boundingClientRect(rect => {
+          this.headHeight = rect.height
+        })
+        .exec()
+      query
+        .select('#file')
+        .boundingClientRect(rect => {
+          this.fileHeight = rect.height
+        })
+        .exec()
+    },
     // 点击上传
     upload() {
       // 判断是否可以上传
@@ -277,10 +300,8 @@ export default {
   overflow: hidden;
   padding: 0;
 
-  .navigation-container {
-    width: 100vw;
-
-    .navigation-bar {
+  .navigation {
+    .bar {
       text-align: center;
 
       .logo {
@@ -290,37 +311,29 @@ export default {
   }
 
   .head {
-    margin-top: 50rpx;
+    padding-top: 50rpx;
     .user {
       .img-center {
         margin-left: 32rpx;
         image {
-          width: 100rpx;
-          height: 100rpx;
+          width: 95rpx;
+          height: 95rpx;
+          vertical-align: middle;
         }
       }
     }
     .user-login {
       display: flex;
       align-items: center;
-
-      text {
-        color: #00a29c;
-        font-size: 50rpx;
-        font-weight: 400;
-      }
+      font-size: 40rpx;
     }
 
     .user-info {
       display: flex;
       align-items: center;
-
-      text {
-        color: #000000;
-        font-size: 40rpx;
-        font-weight: 400;
-      }
-
+      color: #000000;
+      font-size: 40rpx;
+      font-weight: 400;
       .arrow {
         margin-left: 20rpx;
       }
@@ -333,13 +346,12 @@ export default {
 
       text {
         color: #707070;
-        font-size: 35rpx;
-        line-height: 40rpx;
+        font-size: 28rpx;
         font-weight: 400;
       }
     }
     .func {
-      margin: 50rpx 0;
+      padding: 40rpx 0;
       display: flex;
       flex-direction: row;
       align-items: center;
@@ -367,7 +379,8 @@ export default {
   }
 
   .file {
-    margin-left: 32rpx;
+    padding-left: 32rpx;
+    padding-bottom: 20rpx;
     .file-text {
       color: #000000;
       font-size: 50rpx;
@@ -382,17 +395,20 @@ export default {
   }
 
   .document {
-    padding: 20rpx 0;
-    height: calc(45vh + constant(safe-area-inset-bottom));
-    height: calc(45vh + env(safe-area-inset-bottom));
-    overflow-y: scroll;
+    position: absolute;
+    width: 100%;
+    bottom: 0;
+    overflow: scroll;
     .list {
+      padding-bottom: constant(safe-area-inset-bottom);
+      padding-bottom: env(safe-area-inset-bottom);
       .item {
         margin: 25rpx 0;
         image {
           width: 75rpx;
           height: 75rpx;
           margin-left: 32rpx;
+          vertical-align: middle;
         }
         .file-name {
           margin-right: 10rpx;
@@ -427,8 +443,8 @@ export default {
       flex-direction: column;
 
       .img {
-        width: 30vw;
-        height: 30vw;
+        width: 40vw;
+        height: 40vw;
         background: rgba(0, 0, 0, 0);
       }
 
