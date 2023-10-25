@@ -96,9 +96,7 @@ export default {
     }
   },
   onLoad(e) {
-    if (e && e.id) {
-      this.$f.set('fid', e.id)
-    }
+    if (e && e.id) this.$f.set('fid', e.id)
   },
   onShow() {
     if (this.$f.get('userinfo', '')) {

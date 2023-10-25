@@ -158,30 +158,22 @@ export default {
       let count = 0
       while (1) {
         try {
-          if (this.unload) {
-            console.log('1')
-            break
-          }
+          if (this.unload) break
+
           this.sending = true
           const data = await this.getChat()
-
           if (!data) break
-          if (data.dialogId !== this.dialogId) {
-            console.log(data.dialogId)
-            console.log(this.dialogId)
-            break
-          }
+          if (data.dialogId !== this.dialogId) break
+
           data.marked = marked(data.content, 'markdown')
+          const end = this.chat.length - 1
 
           // check processing chat, chatId=0
-          if (this.chat[this.chat.length - 1].chatId === 0) this.chat[this.chat.length - 1] = data
+          if (this.chat[end].chatId === 0) this.chat[end] = data
           // check new chat
-          if (this.chat[this.chat.length - 1].chatId !== data.chatId) this.chat.push(data)
+          if (this.chat[end].chatId !== data.chatId) this.chat.push(data)
 
-          if (data.chatId > 0) {
-            console.log('3')
-            break
-          }
+          if (data.chatId > 0) break
         } catch (e) {
           count++
           if (count >= 10) {
@@ -317,7 +309,7 @@ export default {
         background: #ffffff;
         box-shadow: 0rpx 0rpx 8rpx 0rpx #e9e9e9;
         border-radius: 29rpx;
-        padding: 0 28rpx;
+        padding: 25rpx;
         color: #000;
         font-size: 30.53rpx;
         word-wrap: break-word;

@@ -1,11 +1,11 @@
 import * as $ from './function'
 import config from './config'
 
-const api_url = config['api_url']
+const URL = config['url']
 
 export async function http(url, data = {}, method = 'post') {
   const response = await uni.request({
-    url: api_url + url,
+    url: `${URL}/wechat/${url}`,
     method,
     data,
     header: {
@@ -34,7 +34,7 @@ export async function http(url, data = {}, method = 'post') {
 
 export async function upload(filePath, formData) {
   const response = await uni.uploadFile({
-    url: api_url + 'upload',
+    url: `${URL}/wechat/upload`,
     filePath,
     name: 'file',
     header: {
@@ -75,5 +75,5 @@ export async function login() {
 }
 
 export async function url() {
-  return config['api_url'] || ''
+  return `${config['url']}/wechat`
 }
