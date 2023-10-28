@@ -27,7 +27,7 @@
     {
       "path": "pages/user/user",
       "style": {
-        "navigationBarTitleText": "个人中心"
+        "navigationStyle": "custom"
       }
     }
   ],
@@ -35,7 +35,6 @@
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "LeChat",
     "navigationBarBackgroundColor": "#eefffe",
-
     "disableScroll": true
   }
 }

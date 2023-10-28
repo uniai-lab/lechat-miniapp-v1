@@ -1,83 +1,79 @@
 <template>
-  <view class="u-page content">
-    <view class="head">
-      <u-row>
-        <u-col span="3">
-          <view class="img-center">
-            <u--image
-              :showLoading="true"
-              :src="userinfo.avatar"
-              width="100rpx"
-              height="100rpx"
-              shape="square"
-            ></u--image>
-          </view>
-        </u-col>
-        <u-col span="9">
-          <view class="user-info">
-            <text>{{ userinfo.name }}</text>
-            <view class="text-center">
-              <text class="text-center-button">免费用户</text>
+  <view class="page">
+    <view class="navbar">
+      <!--空白来占位状态栏-->
+      <view :style="{ height: statusBarHeight + 'px' }"></view>
+      <view class="navigation-bar" :style="{ height: navigationBarHeight + 'px' }">
+        <uni-icons class="back" type="back" size="50rpx" @tap="back"></uni-icons>
+        <view class="navbar-title">个人中心</view>
+      </view>
+    </view>
+    <view :style="{ top: statusBarHeight + navigationBarHeight + 'px' }" class="content">
+      <view class="head">
+        <u-row>
+          <u-col span="3">
+            <view class="img-center">
+              <image :src="userinfo.avatar" shape="square"></image>
+            </view>
+          </u-col>
+          <u-col span="9">
+            <view class="user-info">
+              <text>{{ userinfo.name }}</text>
+              <view class="text-center">免费用户</view>
+            </view>
+            <view class="text-bottom" @tap="showTooltip = !showTooltip">
+              <text>剩余对话：{{ userinfo.chance.totalChatChance }}次</text>
+              <text class="icon iconfont icon-wenhao"></text>
+              <zb-tooltip :visible="showTooltip" placement="bottom" color="#00A29C">
+                <div slot="content">
+                  对话次数每7天重置<br />可通过完成任务获取额外的对话次数<br />额外对话次数不会被重置。
+                </div>
+              </zb-tooltip>
+            </view>
+          </u-col>
+        </u-row>
+      </view>
+
+      <view class="main-label">
+        <view class="main-label-icon">
+          <view class="item" v-for="(item, index) in config.menu" :key="index">
+            <view class="item-logo">
+              <image :src="item.image" shape="square"></image>
+            </view>
+            <view class="item-title">
+              <text>{{ item.title }}</text>
+            </view>
+            <view class="item-tip">
+              <text>{{ item.tip }}</text>
             </view>
           </view>
-          <view class="text-bottom" @tap="onTooltipClick">
-            <text>剩余对话：{{ userinfo.chance.totalChatChance }}次</text>
-            <text class="icon iconfont icon-wenhao"></text>
-            <zb-tooltip :visible="tootipVisible" placement="bottom" color="#00A29C">
-              <div slot="content">
-                　对话次数每7天重置<br />可通过完成任务获取额外的对话次数<br />额外对话次数不会被重置。
-              </div>
-            </zb-tooltip>
-          </view>
-        </u-col>
-      </u-row>
-    </view>
+        </view>
+        <view class="task-box">
+          <view class="task" v-for="(item, index) in userinfo.task" :key="index">
+            <view class="task-left">
+              <text>{{ item.title }}</text>
+            </view>
+            <view class="task-right">
+              <text>{{ item.tip }}</text>
+              <view class="task-button">
+                <button v-if="item.type == 1" class="my-button" open-type="share" @tap="bottonTask(item)">
+                  {{ item.button }}
+                </button>
 
-    <view class="main-label">
-      <view class="main-label-iocn">
-        <div class="item" v-for="(item, index) in config.menu" :key="index">
-          <view class="item-logo">
-            <u--image
-              v-if="item.image"
-              :showLoading="true"
-              :src="item.image"
-              width="44rpx"
-              height="41.98rpx"
-              shape="square"
-            ></u--image>
-          </view>
-          <view class="item-title">
-            <text>{{ item.title }}</text>
-          </view>
-          <view class="item-tip">
-            <text>{{ item.tip }}</text>
-          </view>
-        </div>
-      </view>
-      <view class="task-box">
-        <view class="task" v-for="(item, index) in userinfo.task" :key="index">
-          <view class="task-left">
-            <text>{{ item.title }}</text>
-          </view>
-          <view class="task-right">
-            <text>{{ item.tip }}</text>
-            <view class="task-button">
-              <button v-if="item.type == 1" class="my-button" open-type="share" @tap="bottonTask(item)">
-                {{ item.button }}
-              </button>
-
-              <button v-else :class="item.flag ? 'my-button' : 'my-button-flag'" @tap="bottonTask(item)">
-                {{ item.button }}
-              </button>
+                <button v-else :class="item.flag ? 'my-button' : 'my-button-flag'" @tap="bottonTask(item)">
+                  {{ item.button }}
+                </button>
+              </view>
             </view>
           </view>
         </view>
       </view>
-    </view>
 
-    <view class="bottom-text">
-      <text class="bottom-text-left">{{ config.footer }} </text>
-      <text class="bottom-text-right" @tap="duplicate()"> {{ ' ' }}{{ config.footerCopy }}</text>
+      <view class="bottom">
+        <text class="bottom-text-left">{{ config.footer }}</text>
+        &nbsp;&nbsp;
+        <text class="bottom-text-right" @tap="copy()">{{ config.footerCopy }}</text>
+      </view>
     </view>
   </view>
 </template>
@@ -86,12 +82,15 @@
 export default {
   data() {
     return {
+      statusBarHeight: wx.getStorageSync('statusBarHeight'),
+      navigationBarHeight: wx.getStorageSync('navigationBarHeight'),
+      windowHeight: wx.getStorageSync('windowHeight'),
       tisShow: false,
       tisContent: '对话次数每7天重置，可通过完成任务获取额外的对话次数，额外对话次数不会被重置。',
       userinfo: {},
       config: {},
       label: [],
-      tootipVisible: false,
+      showTooltip: false,
       hideScreenCove: true
     }
   },
@@ -114,27 +113,17 @@ export default {
   onShareAppMessage() {
     return {
       title: this.config.shareTitle,
-      path: '/pages/index/index?id=' + this.userinfo.id,
+      path: `/pages/index/index?id=${this.userinfo.id}`,
       imageUrl: this.config.shareImg
     }
   },
 
   methods: {
-    onHandleOpen() {
-      this.hideScreenCove = false
+    back() {
+      uni.navigateBack()
     },
 
-    onHandleClose() {
-      this.hideScreenCove = true
-      this.tootipVisible = false
-    },
-
-    onTooltipClick() {
-      this.onHandleOpen()
-      this.tootipVisible = true
-    },
-
-    duplicate(text) {
+    copy(text) {
       uni.setClipboardData({
         data: this.config.officialAccount,
         success: () => {
@@ -211,269 +200,210 @@ export default {
           icon: 'error'
         })
       }
-    },
-
-    // 点击提示
-    clickTis() {
-      this.tisShow = !this.tisShow
     }
   }
 }
 </script>
 
-<style lang="scss">
-.content {
-  background: #eefffe;
-  width: 750rpx;
-  min-height: 100vh;
-  overflow: hidden;
-  padding-top: 0;
-  padding-left: 0;
-  padding-right: 0;
+<style lang="scss" scoped>
+.page {
+  .navbar {
+    position: absolute;
+    width: 100%;
+    top: 0;
 
-  .head {
-    padding: 30rpx 0;
-  }
-}
-
-.screen-cover {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 999;
-  width: 100%;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0);
-}
-
-.img-center {
-  margin-left: 55.34rpx;
-  margin-top: 30rpx;
-}
-
-.user-info {
-  display: flex;
-  margin-top: 30rpx;
-  align-items: center;
-  margin-left: 29.3rpx;
-  text {
-    margin-right: 10rpx;
-    color: #000000;
-    font-size: 43.44rpx;
-    font-weight: 400;
-  }
-}
-
-.text-center {
-  display: flex;
-  justify-content: center;
-  /* 水平居中 */
-  align-items: center;
-  /* 垂直居中 */
-  margin-left: 29.3rpx;
-  margin-top: 10rpx;
-  width: 139.31rpx;
-  height: 47.71rpx;
-  background-color: #babcbb;
-  color: #ffffff;
-  border-radius: 10rpx;
-}
-
-.text-center .text-center-button {
-  font-size: 26.72rpx;
-  text-align: center;
-  color: #ffffff;
-}
-
-.text-bottom {
-  align-items: center;
-  display: flex;
-  color: #00a29c;
-  font-size: 30rpx;
-  margin-left: 29.3rpx;
-  margin-top: 11rpx;
-}
-
-.main-label {
-  background: #fff;
-  padding: 40rpx;
-  border-radius: 1rem;
-  width: 80vw;
-  margin: 0 auto;
-}
-
-.main-label .main-label-content .main-label-title {
-  font-size: 30.53rpx;
-  font-weight: 400;
-}
-
-.main-label-iocn {
-  margin: 30.55rpx 0;
-  display: flex;
-  justify-content: space-between;
-  /* 让子元素之间的距离相等 */
-  align-items: center;
-}
-
-.main-label-iocn .item {
-  flex: 1;
-  /* 平均分布 */
-  text-align: center;
-}
-
-.item-logo {
-  display: flex;
-  justify-content: center;
-  /* 水平居中 */
-}
-
-.item-logo u--image {
-  margin: 0 auto;
-  /* 左右居中 */
-}
-
-.item-title {
-  margin-top: 20rpx;
-  color: #333333;
-  font-size: 30.53rpx;
-}
-
-.item-tip {
-  margin-top: 8rpx;
-  color: #a8a8a8;
-  font-size: 22.9rpx;
-}
-
-.task-box {
-  margin-top: 60rpx;
-
-  .task {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 30rpx;
-
-    .task-left {
+    .navigation-bar {
       display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+
+      .back {
+        position: absolute;
+        left: 10rpx;
+        font-size: 35rpx;
+        color: #000;
+      }
+
+      .navbar-title {
+        font-size: 35rpx;
+        max-width: 60vw;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-weight: 400;
+      }
+    }
+  }
+
+  .content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin-top: 50rpx;
+    .head {
+      padding: 30rpx;
+      .img-center {
+        text-align: center;
+        image {
+          width: 100rpx;
+          height: 100rpx;
+        }
+      }
+
+      .user-info {
+        display: flex;
+        align-items: center;
+        text {
+          margin-right: 10rpx;
+          color: #000000;
+          font-size: 43.44rpx;
+          font-weight: 400;
+        }
+        .text-center {
+          margin-left: 20rpx;
+          background-color: #babcbb;
+          padding: 5rpx 10rpx;
+          color: #fff;
+          border-radius: 10rpx;
+          font-size: 24rpx;
+        }
+      }
+
+      .text-bottom {
+        display: flex;
+        align-items: center;
+        margin-top: 12rpx;
+        text {
+          color: #00a29c;
+          font-size: 28rpx;
+        }
+        .icon-wenhao {
+          font-size: 28rpx;
+          margin-left: 8rpx;
+        }
+      }
+    }
+    .main-label {
+      border: solid 1px #00a29c;
+      padding: 40rpx;
+      border-radius: 1rem;
+      width: 76vw;
+      margin: 0 auto;
+      margin-top: 55rpx;
+      .main-label-icon {
+        margin: 30rpx 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        .item {
+          flex: 1;
+          text-align: center;
+          .item-logo {
+            display: flex;
+            justify-content: center;
+            image {
+              margin: 0 auto;
+              width: 44rpx;
+              height: 44rpx;
+            }
+          }
+
+          .item-title {
+            margin-top: 20rpx;
+            color: #333333;
+            font-size: 30.53rpx;
+          }
+
+          .item-tip {
+            margin-top: 8rpx;
+            color: #a8a8a8;
+            font-size: 22.9rpx;
+          }
+        }
+      }
+      .task-box {
+        margin-top: 60rpx;
+
+        .task {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 30rpx;
+
+          .task-left {
+            display: flex;
+            font-size: 27rpx;
+            align-items: center;
+
+            text {
+              color: #000000;
+              font-size: 27rpx;
+              font-family:
+                PingFangSC-Medium,
+                PingFang SC;
+              font-weight: 500;
+              color: #000000;
+              line-height: 69rpx;
+            }
+          }
+
+          .task-right {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            text {
+              font-size: 25rpx;
+              color: #5b5b5b;
+              margin-right: 17rpx;
+            }
+
+            .task-button {
+              background: #00a29c;
+              border-radius: 17rpx;
+              font-size: 22.9rpx;
+              color: #ffffff;
+
+              .my-button {
+                background: #00a29c;
+                border-radius: 10rpx;
+                font-size: 20rpx;
+                color: #ffffff;
+                padding: 0rpx 10rpx;
+              }
+
+              .my-button-flag {
+                background: #adadad;
+                border-radius: 10rpx;
+                font-size: 20rpx;
+                color: #ffffff;
+                padding: 0rpx 10rpx;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .bottom {
+      position: fixed;
+      text-align: center;
+      bottom: 60rpx;
+      width: 100%;
+
       font-size: 27rpx;
-      align-items: center;
-      width: 300rpx;
-
-      .dian {
-        width: 15.27rpx;
-        height: 15.27rpx;
-        background-color: #000000;
-        border-radius: 50%;
-        /* 创建圆点 */
-        margin-right: 20rpx;
-        /* 调整圆点与文本之间的距离 */
-      }
-
-      text {
-        color: #000000;
-        font-size: 27rpx;
-        font-family:
-          PingFangSC-Medium,
-          PingFang SC;
-        font-weight: 500;
-        color: #000000;
-        line-height: 69rpx;
-      }
-    }
-
-    .task-right {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      text {
-        font-size: 25rpx;
+      line-height: 38rpx;
+      .bottom-text-left {
+        font-weight: 400;
         color: #5b5b5b;
-        margin-right: 17rpx;
       }
 
-      .task-button {
-        background: #00a29c;
-        border-radius: 17rpx;
-        font-size: 22.9rpx;
-        color: #ffffff;
-
-        .my-button {
-          background: #00a29c;
-          border-radius: 10rpx;
-          font-size: 20rpx;
-          color: #ffffff;
-          padding: 0rpx 10rpx;
-        }
-
-        .my-button-flag {
-          background: #adadad;
-          border-radius: 10rpx;
-          font-size: 20rpx;
-          color: #ffffff;
-          padding: 0rpx 10rpx;
-        }
+      .bottom-text-right {
+        font-weight: 500;
+        color: #00a29c;
       }
     }
   }
-}
-
-.bottom-text {
-  position: fixed;
-  text-align: center;
-  bottom: 80rpx;
-  width: 100%;
-
-  .bottom-text-left {
-    width: 267rpx;
-    height: 38rpx;
-    font-size: 27rpx;
-    font-family:
-      PingFangSC-Regular,
-      PingFang SC;
-    font-weight: 400;
-    color: #5b5b5b;
-    line-height: 38rpx;
-  }
-
-  .bottom-text-right {
-    margin-top: 8rpx;
-    width: 286rpx;
-    height: 38rpx;
-    font-size: 27rpx;
-    font-family:
-      PingFangSC-Medium,
-      PingFang SC;
-    font-weight: 500;
-    color: #00a29c;
-    line-height: 38rpx;
-  }
-}
-
-.tis {
-  margin-left: 20rpx;
-  width: 22.9rpx;
-  height: 22.9rpx;
-  text-align: center;
-  line-height: 22.9rpx;
-  border-radius: 22.9rpx;
-  display: inline-block;
-}
-
-.tisContent {
-  width: 495rpx;
-  height: 50rpx;
-  position: fixed;
-  background-color: #417cff;
-  color: #ffffff;
-  margin-top: 8px;
-  left: 158rpx;
-  padding: 8rpx;
-  font-size: 19.08rpx;
-  z-index: 9999;
-}
-
-.icon-wenhao {
-  font-size: 28rpx;
-  margin-left: 8rpx;
 }
 </style>

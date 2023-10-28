@@ -12,7 +12,7 @@ module.exports = (str, type, option) => {
       result = parse(str, option)
       break
     default:
-      throw new Error('Invalid type, only markdown and html are supported')
+      result = parse(md(str), option)
       break
   }
   return result

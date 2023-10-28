@@ -3,6 +3,7 @@ import uView from 'uview-ui'
 import * as http from './common/http'
 import * as conf from './common/config'
 import * as func from './common/function'
+import towxml from './static/towxml'
 
 // #ifndef VUE3
 import Vue from 'vue'
@@ -29,8 +30,7 @@ app.$mount()
 import { createSSRApp } from 'vue'
 export function createApp() {
   const app = createSSRApp(App)
-  return {
-    app
-  }
+  app.config.globalProperties.$towxml = towxml
+  return { app }
 }
 // #endif

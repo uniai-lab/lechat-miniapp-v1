@@ -1,19 +1,19 @@
 <template>
   <view class="page">
-    <view class="navbar" :style="{ height: navigationBarAndStatusBarHeight }">
+    <view class="navbar">
       <!--空白来占位状态栏-->
-      <view :style="{ height: statusBarHeight }"></view>
-      <view class="navigation-bar" :style="{ height: navigationBarHeight }">
+      <view :style="{ height: statusBarHeight + 'px' }"></view>
+      <view class="navigation-bar" :style="{ height: navigationBarHeight + 'px' }">
         <uni-icons class="back" type="back" size="50rpx" @tap="back"></uni-icons>
         <view class="navbar-title">{{ title }}</view>
       </view>
     </view>
 
     <scroll-view
-      :style="{ top: navigationBarAndStatusBarHeight }"
+      :style="{ top: statusBarHeight + navigationBarHeight + 'px' }"
       class="chat"
       scroll-y
-      :scroll-with-animation="false"
+      :scroll-with-animation="animation"
       :scroll-into-view="bottomView"
     >
       <view class="chat-content" v-for="(item, index) in chat" :key="index" :data-self="item.type">
@@ -62,10 +62,8 @@ export default {
   data() {
     return {
       // 导航栏和状态栏高度
-      navigationBarAndStatusBarHeight:
-        wx.getStorageSync('statusBarHeight') + wx.getStorageSync('navigationBarHeight') + 'px',
-      statusBarHeight: wx.getStorageSync('statusBarHeight') + 'px',
-      navigationBarHeight: wx.getStorageSync('navigationBarHeight') + 'px',
+      statusBarHeight: wx.getStorageSync('statusBarHeight'),
+      navigationBarHeight: wx.getStorageSync('navigationBarHeight'),
       placeholder: '输入关于文档的问题',
       chat: [],
       value: '',
@@ -78,7 +76,8 @@ export default {
       showBottom: true,
       showRetry: false,
       keyboardHeight: 0,
-      unload: false
+      unload: false,
+      animation: true
     }
   },
   onLoad(e) {
@@ -99,7 +98,7 @@ export default {
 
     uni.onKeyboardHeightChange(res => {
       this.keyboardHeight = res.height
-      this.scrollToBottom()
+      this.scrollToBottom(100)
       if (res.duration === 0) this.showBottom = false
       else this.showBottom = true
     })
@@ -111,11 +110,11 @@ export default {
     back() {
       uni.navigateBack()
     },
-    scrollToBottom(time = 0, callback = null) {
+    scrollToBottom(time = 0, animation = true) {
+      this.animation = animation
       this.bottomView = ''
       setTimeout(() => {
         this.bottomView = 'bottomView'
-        if (callback && typeof callback === 'function') callback()
       }, time)
     },
     // 发送消息
@@ -134,17 +133,17 @@ export default {
         this.chat.push({
           avatar: this.userinfo.avatar || this.config.DEFAULT_AVATAR_USER,
           content: input,
-          marked: marked(input, 'markdown'),
+          marked: marked(input, 'markdown', { theme: 'dark' }),
           dialogId: this.dialogId,
           userId: this.userinfo.id,
           chatId: 0,
           type: true
         })
-        this.scrollToBottom()
+        this.scrollToBottom(200)
 
         const data = await this.$h.http('chat-stream', { input, dialogId: this.dialogId })
         // update user chat content
-        data.marked = marked(data.content, 'markdown')
+        data.marked = marked(data.content, 'markdown', { theme: 'dark' })
         this.chat[this.chat.length - 1] = data
         this.dialogId = data.dialogId
         this.loopChat()
@@ -165,7 +164,7 @@ export default {
           if (!data) break
           if (data.dialogId !== this.dialogId) break
 
-          data.marked = marked(data.content, 'markdown')
+          data.marked = marked(data.content, 'markdown', { theme: 'light' })
           const end = this.chat.length - 1
 
           // check processing chat, chatId=0
@@ -182,9 +181,10 @@ export default {
             break
           }
         } finally {
-          this.scrollToBottom()
+          this.scrollToBottom(0, false)
         }
       }
+      this.scrollToBottom(200, true)
       this.sending = false
       this.getUserInfo()
     },
@@ -198,7 +198,7 @@ export default {
         const data = await this.$h.http('list-chat', { dialogId: this.dialogId })
         for (const item of data) {
           this.dialogId = item.dialogId
-          item.marked = marked(item.content, 'markdown')
+          item.marked = marked(item.content, 'markdown', { theme: item.type ? 'dark' : 'light' })
           this.chat.push(item)
         }
         this.loopChat()

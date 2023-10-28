@@ -1,16 +1,14 @@
 Component({
-  options:{
-    styleIsolation:'shared'
+  options: {
+    styleIsolation: 'shared'
   },
-  properties:{
-    nodes:{
-      type:Object,
-      value:{}
+  properties: {
+    nodes: {
+      type: Object,
+      value: {}
     }
   },
-  data:{
-    someData:{
-      
-    }
+  data: {
+    someData: {}
   }
 })

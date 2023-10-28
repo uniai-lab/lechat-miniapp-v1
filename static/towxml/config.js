@@ -3,12 +3,12 @@ module.exports = {
 
   // 数学公式解析API
   latex: {
-    api: 'https://api.latex.cas-ll.cn/?tex'
+    api: 'https://api.latex.cas-ll.cn?tex'
   },
 
   // yuml图解析APPI
   yuml: {
-    api: 'https://api.latex.cas-ll.cn/?yuml'
+    api: 'https://api.latex.cas-ll.cn?yuml'
   },
 
   // markdown解析配置，保留需要的选项即可

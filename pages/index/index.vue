@@ -44,7 +44,7 @@
       <text class="file-num">剩余可上传{{ userinfo.chance.totalUploadChance || 0 }}个文档</text>
     </view>
 
-    <view class="document" :style="{ height: `${documentHeight}px` }">
+    <view class="document" v-show="navHeight && headHeight && fileHeight" :style="{ height: `${documentHeight}px` }">
       <view class="list" v-if="list.length">
         <view class="item" v-for="(item, index) in list" :key="index">
           <u-row>
@@ -91,8 +91,8 @@ export default {
   },
   onShareAppMessage() {
     return {
-      path: '/pages/index/index?id=' + this.userinfo.id,
-      title: this.config.shareTitle || 'AI大模型文档分析工具，来试试吗？',
+      path: `/pages/index/index?id=${this.userinfo.id}`,
+      title: this.config.shareTitle,
       imageUrl: this.config.shareImg
     }
   },
