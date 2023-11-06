@@ -41,7 +41,7 @@
       <input
         class="input"
         :class="sending ? 'disable' : ''"
-        :adjust-position="false"
+        :maxlength="-1"
         v-model="value"
         :placeholder="placeholder"
       />
@@ -416,18 +416,17 @@ export default {
       .bottom-title {
         font-size: 30rpx;
         line-height: 30rpx;
-        font-weight: 700;
+        font-weight: 500;
         color: #ffffff;
         margin-bottom: 5rpx;
       }
 
       .bottom-number {
-        font-size: 23rpx;
+        font-size: 25rpx;
         font-weight: 400;
         color: rgba(255, 255, 255, 0.73);
-        line-height: 10px;
-        font-size: 10px;
-        margin-top: 2px;
+        line-height: 25rpx;
+        margin-top: 5rpx;
       }
     }
 
