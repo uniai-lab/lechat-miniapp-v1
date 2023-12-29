@@ -44,6 +44,7 @@
         :maxlength="-1"
         v-model="value"
         :placeholder="placeholder"
+		:disabled="chat.length == 0"
       />
       <button class="bottom" :class="sending ? 'disable' : ''" @tap="sendMessage" :disabled="sending">
         <view class="bottom-title">发送</view>
@@ -123,6 +124,7 @@ export default {
         // check input
         if (!this.value.trim()) return
         if (!this.userinfo.chance.totalChatChance) throw new Error('对话次数用尽')
+		if(this.sending) return
         const check = await this.getChat()
         if (check && check.dataId === 0) throw new Error('当前有流对话尚未结束')
 
