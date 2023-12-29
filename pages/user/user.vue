@@ -19,7 +19,7 @@
           <u-col span="9">
             <view class="user-info">
               <text>{{ userinfo.name }}</text>
-              <view class="text-center">免费用户</view>
+              <!-- <view class="text-center">免费用户</view> -->
             </view>
             <view class="text-bottom" @tap="showTooltip = !showTooltip">
               <text>剩余对话：{{ userinfo.chance.totalChatChance }}次</text>
@@ -56,19 +56,35 @@
             <view class="task-right">
               <text>{{ item.tip }}</text>
               <view class="task-button">
-                <button v-if="item.type == 1" class="my-button" open-type="share" @tap="bottonTask(item)">
+				<button v-if="item.type==1" class="my-button" @tap="bottonTask(item)">
                   {{ item.button }}
                 </button>
-
-                <button v-else :class="item.flag ? 'my-button' : 'my-button-flag'" @tap="bottonTask(item)">
+				<button v-if="item.type==2" class="my-button" @tap="copy()">
                   {{ item.button }}
                 </button>
+				<button v-if="item.type==3" class="my-button" @click="watchvideo">
+				  {{ item.button }}
+				</button>
               </view>
             </view>
+
           </view>
+		  <view class="task" v-if="adv.show">
+		    <view class="task-left">
+		      <text>{{adv.title}}</text>
+		    </view>
+		    <view class="task-right">
+		      <text>{{ adv.tip }}</text>
+		      <view class="task-button">
+		  				<button class="my-button" @click.prevent="watchvideo">
+						立即观看
+		        </button>
+		      </view>
+		    </view>
+		  
+		  </view>
         </view>
       </view>
-
       <view class="bottom">
         <text class="bottom-text-left">{{ config.footer }}</text>
         &nbsp;&nbsp;
@@ -79,6 +95,7 @@
 </template>
 
 <script>
+import { QuoteType } from '../../static/towxml/parse/parse2/Tokenizer'
 export default {
   data() {
     return {
@@ -91,7 +108,7 @@ export default {
       config: {},
       label: [],
       showTooltip: false,
-      hideScreenCove: true
+      hideScreenCove: true,
     }
   },
   onLoad(e) {
@@ -119,6 +136,62 @@ export default {
   },
 
   methods: {
+		watchvideo() {
+	  	// 若在开发者工具中无法预览广告，请切换开发者工具中的基础库版本
+	  	// 在页面中定义激励视频广告
+	  	let videoAd = null
+	  
+	  	// 在页面onLoad回调事件中创建激励视频广告实例
+	  	if (wx.createRewardedVideoAd) {
+	  		videoAd = wx.createRewardedVideoAd({
+	  			adUnitId: 'adunit-370faef587c93ff0'
+	  		});
+	  		videoAd.onLoad(() => {console.log(123)})
+	  		videoAd.onError((err) => {
+	  			console.error('激励视频光告加载失败', err)
+	  		})
+	  		videoAd.onClose(async (res) => {
+	  
+	  			// 用户点击了【关闭广告】按钮
+	  			if (res && res.isEnded) {
+					this.$h.http('watch-adv', {}, 'GET').then(()=>{
+						const ad =  this.userinfo.task.find(res=>res.type==3)
+						const num  = ad.tip.split('+')[1]
+						uni.showToast({
+							title: '对话次数+'+num,
+						})
+						this.getConfig()
+						this.getUserInfo()
+					})
+					
+					
+	  			} else {
+	  				// 播放中途退出，不下发游戏奖励
+	  				uni.showToast({
+	  					title: '中途退出',
+	  					icon: 'error'
+	  				})
+	  			}
+	  
+	  
+	  
+	  		})
+	  	}
+	  
+	  	// 用户触发广告后，显示激励视频广告
+	  	if (videoAd) {
+	  		videoAd.show().catch(() => {
+	  			// 失败重试
+	  			videoAd.load()
+	  				.then(() => videoAd.show())
+	  				.catch(err => {
+	  					console.error('激励视频 广告显示失败', err)
+	  				})
+	  		})
+	  	}
+	  
+	  
+	  },
     back() {
       uni.navigateBack()
     },

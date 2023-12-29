@@ -42,7 +42,9 @@
     <view class="file" id="file">
       <text class="file-text">我的文档</text>
       <text class="file-num">剩余可上传{{ userinfo.chance.totalUploadChance || 0 }}个文档</text>
+	  <text @click="show = !show" v-show="showNewAppButton"  style="margin-left: 50rpx;border-radius: 15rpx;font-size: 30rpx;padding: 10rpx 20rpx;box-shadow: 0 0 2px  gray;color:gray;background: #00a29c;color:whitesmoke" >体验新版</text>
     </view>
+	<u-modal :show="show" title="公告" content='快来体验我们新版小程序吧!' showCancelButton closeOnClickOverlay @confirm="modalConfirm" @cancel="modalClose" @close="modalClose"></u-modal>
 
     <view class="document" v-show="navHeight && headHeight && fileHeight" :style="{ height: `${documentHeight}px` }">
       <view class="list" v-if="list.length">
@@ -81,10 +83,12 @@ export default {
       fileHeight: 0,
       userinfo: { name: 'loading...' },
       config: {},
-      list: []
+      list: [],
+	  show:false,
+	  showNewAppButton:false,
     }
   },
-  onLoad(e) {
+   onLoad(e) {
     if (e && e.id) this.$f.set('fid', e.id)
     this.init()
     this.setDocumentHeight()
@@ -102,6 +106,25 @@ export default {
     }
   },
   methods: {
+	  modalConfirm(){ 
+		 const appId = this.config["newAppId"],
+		 openid = uni.getStorageSync('openid'),
+		 token = uni.getStorageSync('token')
+		try{
+			uni.navigateToMiniProgram({
+			  appId,
+			  path: `pages/index/index?openid=${openid}&token=${token}`,
+			  success(res) {
+			    // 打开成功1
+			  }
+			})
+		}  catch(e){
+			this.show = false
+		}
+	  },
+	  modalClose(){
+		  this.show = false
+	  },
     // 登录验证
     async init() {
       // 判断是否登录成功
@@ -178,6 +201,10 @@ export default {
         const data = await this.$h.http('config', {}, 'GET')
         this.$f.set('config', data)
         this.config = data
+		//体验新版
+		this.show = this.config['showNewApp'] =='true' || false
+		this.showNewAppButton = this.config['showNewApp'] =='true' || false
+		console.log(this.show,this.showNewAppButton);
       } catch (e) {
         uni.showToast({ title: e.message, icon: 'none' })
       }
