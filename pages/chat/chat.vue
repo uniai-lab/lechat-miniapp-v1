@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view>
     <view class="navbar">
       <!--空白来占位状态栏-->
       <view :style="{ height: statusBarHeight + 'px' }"></view>
@@ -10,50 +10,54 @@
     </view>
 
     <scroll-view
-      :style="{ top: statusBarHeight + navigationBarHeight + 'px' }"
-      class="chat"
+      class="page"
       scroll-y
       :scroll-with-animation="animation"
       :scroll-into-view="bottomView"
+      :show-scrollbar="false"
     >
-      <view class="chat-content" v-for="(item, index) in chat" :key="index" :data-self="item.type">
-        <u--image showLoading :src="item.avatar" width="76rpx" height="76rpx" shape="circle" fade duration="450" />
-        <view class="hr" />
-        <view class="content-view" @longpress="copy" :data-item="item.content">
-          <towxml :nodes="item.marked" />
-          <view v-show="!item.type && item.chatId" class="copy-tip" @tap="copy" :data-item="item.content">
-            长按复制
+      <view
+        class="content"
+        :style="{ paddingTop: statusBarHeight + navigationBarHeight + 'px' }"
+        :class="keyboardHeight ? 'bottom-0' : ''"
+      >
+        <view class="chat-content" v-for="(item, index) in chat" :key="index" :data-self="item.type">
+          <u--image showLoading :src="item.avatar" width="76rpx" height="76rpx" shape="circle" fade duration="450" />
+          <view class="hr" />
+          <view class="content-view" @longpress="copy" :data-item="item.content">
+            <towxml :nodes="item.marked" />
+            <view v-if="!item.type && item.chatId" class="copy-tip" @tap="copy" :data-item="item.content">
+              长按复制
+            </view>
           </view>
         </view>
+        <view id="chat-bottom" class="chat-bottom" :style="{ height: keyboardHeight + 'px' }"></view>
       </view>
-      <view class="retry-content" v-if="showRetry">
-        <text class="retry-text">网络错误，请</text>
-        <view class="retry-btn-content" @tap="loopChat">
-          <text class="retry-btn-text">重试</text>
-          <uni-icons type="refreshempty" size="13"></uni-icons>
-        </view>
-      </view>
-      <view id="bottomView" class="bottom-view"></view>
-      <view v-if="keyboardHeight" class="placeholder" :style="{ height: keyboardHeight + 'px' }"></view>
     </scroll-view>
 
-    <view class="input-bottom" v-show="showBottom">
+    <view
+      class="input-bottom"
+      :style="{ paddingBottom: keyboardHeight + 'px' }"
+      :class="keyboardHeight ? 'bottom-0' : ''"
+    >
       <input
         class="input"
+        v-model="value"
         :class="sending ? 'disable' : ''"
         :maxlength="-1"
-        v-model="value"
-        :placeholder="placeholder"
-		:disabled="chat.length == 0"
+        @focus="scrollToBottom(0, true)"
+        :placeholder="keyboardHeight ? '' : placeholder"
+        :adjust-position="false"
+        :disabled="sending"
       />
       <button class="bottom" :class="sending ? 'disable' : ''" @tap="sendMessage" :disabled="sending">
         <view class="bottom-title">发送</view>
-        <view class="bottom-number">剩 {{ userinfo.chance.totalChatChance || 0 }} 次</view>
+        <view class="bottom-number">剩 {{ userinfo.chance.totalChatChance }} 次</view>
       </button>
-      <view v-if="keyboardHeight" class="placeholder" :style="{ height: keyboardHeight + 'px' }"></view>
     </view>
   </view>
 </template>
+
 <script>
 import towxml from '@/static/towxml/towxml'
 import marked from '@/static/towxml'
@@ -73,16 +77,13 @@ export default {
       dialogId: 0,
       userinfo: {},
       config: {},
-      bottomView: '',
-      showBottom: true,
-      showRetry: false,
+      bottomView: 'chat-bottom',
       keyboardHeight: 0,
       unload: false,
       animation: true
     }
   },
   onLoad(e) {
-    this.unload = false
     if (e && parseInt(e.dialogId)) {
       this.title = e.title
       this.dialogId = parseInt(e.dialogId) || 0
@@ -99,9 +100,6 @@ export default {
 
     uni.onKeyboardHeightChange(res => {
       this.keyboardHeight = res.height
-      this.scrollToBottom(100)
-      if (res.duration === 0) this.showBottom = false
-      else this.showBottom = true
     })
   },
   onUnload() {
@@ -114,26 +112,22 @@ export default {
     scrollToBottom(time = 0, animation = true) {
       this.animation = animation
       this.bottomView = ''
-      setTimeout(() => {
-        this.bottomView = 'bottomView'
-      }, time)
+      setTimeout(() => (this.bottomView = 'chat-bottom'), time)
     },
     // 发送消息
     async sendMessage() {
       try {
         // check input
-        if (!this.value.trim()) return
+        if (this.sending) return
         if (!this.userinfo.chance.totalChatChance) throw new Error('对话次数用尽')
-		if(this.sending) return
-        const check = await this.getChat()
-        if (check && check.dataId === 0) throw new Error('当前有流对话尚未结束')
+        if (!this.value.trim()) return
 
         const input = this.value
         this.value = ''
         this.sending = true
 
         this.chat.push({
-          avatar: this.userinfo.avatar || this.config.DEFAULT_AVATAR_USER,
+          avatar: this.userinfo.avatar,
           content: input,
           marked: marked(input, 'markdown', { theme: 'dark' }),
           dialogId: this.dialogId,
@@ -141,53 +135,49 @@ export default {
           chatId: 0,
           type: true
         })
-        this.scrollToBottom(200)
+        this.scrollToBottom(300)
 
+        // send chat prompt
         const data = await this.$h.http('chat-stream', { input, dialogId: this.dialogId })
-        // update user chat content
+
+        // force to cover user chat content
         data.marked = marked(data.content, 'markdown', { theme: 'dark' })
         this.chat[this.chat.length - 1] = data
         this.dialogId = data.dialogId
-        this.loopChat()
+
+        await this.loopChat()
       } catch (e) {
         uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
+      } finally {
         this.sending = false
       }
     },
     // 循环获取聊天记录
     async loopChat() {
-      let count = 0
-      while (1) {
+      let error = 0
+      while (true) {
+        if (this.unload) break
+        if (error >= 10) break
         try {
-          if (this.unload) break
-
-          this.sending = true
           const data = await this.getChat()
           if (!data) break
           if (data.dialogId !== this.dialogId) break
 
           data.marked = marked(data.content, 'markdown', { theme: 'light' })
-          const end = this.chat.length - 1
 
+          const end = this.chat.length - 1
           // check processing chat, chatId=0
           if (this.chat[end].chatId === 0) this.chat[end] = data
           // check new chat
           if (this.chat[end].chatId !== data.chatId) this.chat.push(data)
+          this.scrollToBottom(0, false)
 
           if (data.chatId > 0) break
         } catch (e) {
-          count++
-          if (count >= 10) {
-            uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
-            this.showRetry = true
-            break
-          }
-        } finally {
-          this.scrollToBottom(0, false)
+          error++
         }
       }
-      this.scrollToBottom(200, true)
-      this.sending = false
+      this.scrollToBottom(300, true)
       this.getUserInfo()
     },
     async getChat() {
@@ -197,15 +187,18 @@ export default {
     async init() {
       try {
         this.chat = []
+        this.sending = true
         const data = await this.$h.http('list-chat', { dialogId: this.dialogId })
         for (const item of data) {
           this.dialogId = item.dialogId
           item.marked = marked(item.content, 'markdown', { theme: item.type ? 'dark' : 'light' })
           this.chat.push(item)
         }
-        this.loopChat()
+        await this.loopChat()
       } catch (e) {
         uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
+      } finally {
+        this.sending = false
       }
     },
 
@@ -219,76 +212,69 @@ export default {
         this.$f.remove('id')
         this.$f.remove('token')
         this.$f.remove('openid')
-        uni.showToast({
-          title: e.msg,
-          duration: 3000,
-          icon: 'none'
-        })
+        uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
       }
     },
-    copy: function (e) {
-      let item = e.currentTarget.dataset.item
-      wx.setClipboardData({
-        data: item,
-        success: function (res) {
-          uni.showToast({
-            title: '复制成功',
-            duration: 2000,
-            icon: 'none'
-          })
-        }
+    copy(e) {
+      uni.setClipboardData({
+        data: e.currentTarget.dataset.item,
+        success: () => uni.showToast({ title: '复制成功', duration: 2000, icon: 'none' })
       })
     }
   }
 }
 </script>
 <style lang="scss" scoped>
-.page {
-  .navbar {
-    position: fixed;
-    width: 100%;
-    top: 0;
-    background: #eefffe;
+.navbar {
+  position: fixed;
+  width: 100%;
+  top: 0;
+  z-index: 999;
+  background: linear-gradient(to top, rgba(238, 255, 254, 0), rgba(238, 255, 254, 0.85) 25%, rgba(238, 255, 254, 1)) 75%;
 
-    .navigation-bar {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
+  .navigation-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 
-      .back {
-        font-size: 35rpx;
-        color: #000;
-        margin-left: 10rpx;
-      }
+    .back {
+      font-size: 35rpx;
+      color: #000;
+      margin-left: 10rpx;
+    }
 
-      .navbar-title {
-        font-size: 35rpx;
-        max-width: 60vw;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        font-weight: 400;
-      }
+    .navbar-title {
+      font-size: 35rpx;
+      max-width: 60vw;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-weight: 400;
     }
   }
+}
 
-  .chat {
-    background: linear-gradient(to bottom, #eefffe, #fdfdfd);
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+.page {
+  background: linear-gradient(to bottom, #eefffe, #fdfdfd);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
+  width: 100vw;
 
-    .bottom-view {
-      height: calc(130rpx + constant(safe-area-inset-bottom));
-      height: calc(130rpx + env(safe-area-inset-bottom));
+  .content {
+    padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
+    padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+    &.bottom-0 {
+      padding-bottom: 120rpx;
     }
 
     .chat-content {
       display: flex;
       align-items: center;
       padding: 20rpx;
-      animation: fade-in 0.3s ease-in forwards;
 
       &:last-child {
         padding-bottom: 40rpx;
@@ -335,106 +321,79 @@ export default {
         }
       }
     }
-    .retry-content {
-      justify-content: flex-start;
-      display: flex;
-      margin-left: 130rpx;
-      align-items: center;
-      padding-bottom: 30rpx;
-
-      .retry-text {
-        color: #ef2020;
-        font-size: 28rpx;
-      }
-
-      .retry-btn-content {
-        display: flex;
-        align-items: center;
-
-        .retry-btn-text {
-          color: #0014c2;
-          font-size: 28rpx;
-        }
-
-        .retry-image {
-          width: 25rpx;
-          height: 25rpx;
-          margin-left: 5rpx;
-          background-image: url('../../static/retry.png');
-          background-repeat: no-repeat;
-          background-size: contain;
-        }
-      }
+    .chat-bottom {
+      height: 0;
+      width: 100%;
     }
   }
-  .input-bottom {
-    animation: slide-fade-in 0.2s ease-in forwards;
-    background: transparent;
-    border: none;
+}
+
+.input-bottom {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-items: center;
+  flex-wrap: wrap;
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 120rpx;
+  bottom: 0;
+  bottom: constant(safe-area-inset-bottom);
+  bottom: env(safe-area-inset-bottom);
+  z-index: 999;
+  &.bottom-0 {
+    bottom: 0;
+  }
+
+  .input {
+    height: 80rpx;
+    background: #fff;
+    border-radius: 100rem;
+    font-size: 30rpx;
+    width: 420rpx;
+    padding: 0 40rpx;
+    border: solid 2px #00a29c;
+
+    &.disable {
+      border: solid 2px #ccc;
+    }
+  }
+
+  .bottom {
+    margin-left: 22rpx;
+    width: 180rpx;
+    height: 90rpx;
+    background: linear-gradient(127deg, #36ad6a 0%, #00a29c 100%);
+    border-radius: 100rem;
+    text-align: center;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    justify-items: center;
-    flex-wrap: wrap;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    min-height: 130rpx;
-    margin-bottom: constant(safe-area-inset-bottom);
-    margin-bottom: env(safe-area-inset-bottom);
+    margin-right: 0;
+    padding: 0;
 
-    .input {
-      height: 80rpx;
-      background: #fff;
-      border-radius: 100rem;
+    &.disable {
+      background: #ccc;
+    }
+
+    .bottom-title {
       font-size: 30rpx;
-      width: 420rpx;
-      padding: 0 40rpx;
-      border: solid 2px #00a29c;
-
-      &.disable {
-        border: solid 2px #ccc;
-      }
+      line-height: 30rpx;
+      font-weight: 500;
+      color: #ffffff;
+      margin-bottom: 5rpx;
     }
 
-    .bottom {
-      margin-left: 22rpx;
-      width: 180rpx;
-      height: 90rpx;
-      background: linear-gradient(127deg, #36ad6a 0%, #00a29c 100%);
-      border-radius: 100rem;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      margin-right: 0;
-
-      &.disable {
-        background: #ccc;
-      }
-
-      .bottom-title {
-        font-size: 30rpx;
-        line-height: 30rpx;
-        font-weight: 500;
-        color: #ffffff;
-        margin-bottom: 5rpx;
-      }
-
-      .bottom-number {
-        font-size: 25rpx;
-        font-weight: 400;
-        color: rgba(255, 255, 255, 0.73);
-        line-height: 25rpx;
-        margin-top: 5rpx;
-      }
-    }
-
-    .placeholder {
-      flex-grow: 1;
-      flex-basis: 100%;
+    .bottom-number {
+      font-size: 25rpx;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.73);
+      line-height: 25rpx;
+      margin-top: 5rpx;
     }
   }
 }
