@@ -9,13 +9,7 @@
       </view>
     </view>
 
-    <scroll-view
-      class="page"
-      scroll-y
-      :scroll-with-animation="animation"
-      :scroll-into-view="bottomView"
-      :show-scrollbar="false"
-    >
+    <scroll-view class="page" scroll-y :scroll-with-animation="animation" :scroll-into-view="bottomView">
       <view
         class="content"
         :style="{ paddingTop: statusBarHeight + navigationBarHeight + 'px' }"
@@ -36,8 +30,8 @@
     </scroll-view>
 
     <view
-      class="input-bottom"
       :style="{ paddingBottom: keyboardHeight + 'px' }"
+      class="input-bottom"
       :class="keyboardHeight ? 'bottom-0' : ''"
     >
       <input
@@ -45,8 +39,7 @@
         v-model="value"
         :class="sending ? 'disable' : ''"
         :maxlength="-1"
-        @focus="scrollToBottom(0, true)"
-        :placeholder="keyboardHeight ? '' : placeholder"
+        :placeholder="placeholder"
         :adjust-position="false"
         :disabled="sending"
       />
@@ -100,6 +93,7 @@ export default {
 
     uni.onKeyboardHeightChange(res => {
       this.keyboardHeight = res.height
+      this.scrollToBottom()
     })
   },
   onUnload() {
@@ -284,13 +278,8 @@ export default {
         padding-top: 40rpx;
       }
 
-      .avatar {
-        flex-shrink: 0;
-      }
-
       .hr {
         width: 4vw;
-        flex-shrink: 0;
       }
 
       .content-view {
@@ -323,7 +312,8 @@ export default {
     }
     .chat-bottom {
       height: 0;
-      width: 100%;
+      width: 100vw;
+      display: block;
     }
   }
 }
@@ -336,16 +326,18 @@ export default {
   justify-content: center;
   justify-items: center;
   flex-wrap: wrap;
+  height: 120rpx;
   position: fixed;
   left: 0;
   right: 0;
-  height: 120rpx;
   bottom: 0;
   bottom: constant(safe-area-inset-bottom);
   bottom: env(safe-area-inset-bottom);
   z-index: 999;
+
   &.bottom-0 {
     bottom: 0;
+    height: auto;
   }
 
   .input {
@@ -356,9 +348,11 @@ export default {
     width: 420rpx;
     padding: 0 40rpx;
     border: solid 2px #00a29c;
+    color: #000;
 
     &.disable {
       border: solid 2px #ccc;
+      color: #ccc;
     }
   }
 
@@ -395,28 +389,6 @@ export default {
       line-height: 25rpx;
       margin-top: 5rpx;
     }
-  }
-}
-
-@keyframes slide-fade-in {
-  0% {
-    opacity: 0;
-    transform: translateY(100%);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fade-in {
-  0% {
-    opacity: 0;
-  }
-
-  100% {
-    opacity: 1;
   }
 }
 </style>
