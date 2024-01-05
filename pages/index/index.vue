@@ -1,10 +1,10 @@
 <template>
-  <view class="content">
+  <view class="page">
     <view class="navigation" id="nav">
       <!--空白来占位状态栏-->
-      <view :style="{ height: `${statusBarHeight}px` }"></view>
+      <view :style="{ height: `${statusHeight}px` }"></view>
       <!--自定义导航栏-->
-      <view class="bar" :style="{ height: `${navigationBarHeight}px` }">
+      <view class="bar" :style="{ height: `${menuHeight}px` }">
         <image src="../../static/logo.png" class="logo" mode="aspectFit"></image>
       </view>
     </view>
@@ -41,7 +41,7 @@
 
     <view class="file" id="file">
       <text class="file-text">我的文档</text>
-      <text class="file-num">剩余可上传{{ userinfo.chance.totalUploadChance || 0 }}个文档</text>
+      <text class="file-num" v-if="userinfo">剩余可上传{{ userinfo.chance.totalUploadChance }}个文档</text>
       <text
         @click="show = !show"
         v-show="showNewAppButton"
@@ -69,7 +69,11 @@
       @close="modalClose"
     ></u-modal>
 
-    <view class="document" v-show="navHeight && headHeight && fileHeight" :style="{ height: `${documentHeight}px` }">
+    <view
+      class="document"
+      v-if="navHeight && headHeight && fileHeight"
+      :style="{ height: windowHeight - navHeight - headHeight - fileHeight + 'px' }"
+    >
       <view class="list" v-if="list.length">
         <view class="item" v-for="(item, index) in list" :key="index">
           <u-row>
@@ -81,7 +85,7 @@
               <view class="file-date"> {{ item.date }} {{ item.size }} </view>
             </u-col>
             <u-col span="2" @tap="preview(item)">
-              <view class="icon iconfont icon-yulan"></view>
+              <uni-icons class="iconfont" type="cloud-download" size="40rpx" color="#00a29c"></uni-icons>
             </u-col>
           </u-row>
         </view>
@@ -98,9 +102,9 @@
 export default {
   data() {
     return {
-      statusBarHeight: wx.getStorageSync('statusBarHeight'),
-      navigationBarHeight: wx.getStorageSync('navigationBarHeight'),
-      windowHeight: wx.getStorageSync('windowHeight'),
+      statusHeight: getApp().globalData().statusBarHeight,
+      menuHeight: getApp().globalData().menuHeight,
+      windowHeight: getApp().globalData().windowHeight,
       navHeight: 0,
       headHeight: 0,
       fileHeight: 0,
@@ -121,11 +125,6 @@ export default {
       path: `/pages/index/index?id=${this.userinfo.id}`,
       title: this.config.shareTitle,
       imageUrl: this.config.shareImg
-    }
-  },
-  computed: {
-    documentHeight() {
-      return this.windowHeight - this.headHeight - this.fileHeight - this.navHeight
     }
   },
   methods: {
@@ -343,13 +342,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.content {
-  background: linear-gradient(to bottom, #eefffe, #fff);
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  padding: 0;
-
+.page {
   .navigation {
     .bar {
       text-align: center;
@@ -479,8 +472,8 @@ export default {
 
         .iconfont {
           color: #00a29c;
-          text-align: right;
-          margin-right: 40rpx;
+          float: right;
+          margin-right: 30rpx;
         }
       }
     }

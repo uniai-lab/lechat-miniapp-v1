@@ -1,82 +1,82 @@
 <template>
   <view>
-    <view class="navbar">
-      <!--空白来占位状态栏-->
-      <view :style="{ height: statusBarHeight + 'px' }"></view>
-      <view class="navigation-bar" :style="{ height: navigationBarHeight + 'px' }">
-        <uni-icons class="back" type="back" size="50rpx" @tap="back"></uni-icons>
-        <view class="navbar-title">{{ title }}</view>
-      </view>
-    </view>
+    <NavBar :title="title" show-back />
 
-    <scroll-view class="page" scroll-y :scroll-with-animation="animation" :scroll-into-view="bottomView">
-      <view
-        class="content"
-        :style="{ paddingTop: statusBarHeight + navigationBarHeight + 'px' }"
-        :class="keyboardHeight ? 'bottom-0' : ''"
-      >
-        <view class="chat-content" v-for="(item, index) in chat" :key="index" :data-self="item.type">
-          <u--image showLoading :src="item.avatar" width="76rpx" height="76rpx" shape="circle" fade duration="450" />
+    <scroll-view
+      :style="{ height: windowHeight - keyboardHeight + 'px' }"
+      class="chat"
+      scroll-y
+      :scroll-with-animation="animation"
+      :scroll-into-view="bottomView"
+    >
+      <view class="content" :style="{ paddingTop: paddingHeight + 'px' }" :class="keyboardHeight ? 'bottom-0' : ''">
+        <view
+          class="chat-content"
+          v-show="item.content"
+          v-for="(item, index) in chat"
+          :key="index"
+          :data-self="item.type"
+        >
+          <u--image showLoading :src="item.avatar" width="76rpx" height="76rpx" shape="circle" />
           <view class="hr" />
           <view class="content-view" @longpress="copy" :data-item="item.content">
             <towxml :nodes="item.marked" />
-            <view v-if="!item.type && item.chatId" class="copy-tip" @tap="copy" :data-item="item.content">
+            <view v-show="!item.type && item.chatId" class="copy-tip" @tap="copy" :data-item="item.content">
               长按复制
             </view>
           </view>
         </view>
-        <view id="chat-bottom" class="chat-bottom" :style="{ height: keyboardHeight + 'px' }"></view>
       </view>
+      <view id="bottom-view"></view>
     </scroll-view>
 
-    <view
-      :style="{ paddingBottom: keyboardHeight + 'px' }"
-      class="input-bottom"
-      :class="keyboardHeight ? 'bottom-0' : ''"
-    >
+    <view class="input-bottom" :style="{ bottom: (keyboardHeight ? keyboardHeight : safeBottom) + 'px' }">
       <input
         class="input"
-        v-model="value"
         :class="sending ? 'disable' : ''"
         :maxlength="-1"
+        v-model="value"
         :placeholder="placeholder"
         :adjust-position="false"
-        :disabled="sending"
       />
       <button class="bottom" :class="sending ? 'disable' : ''" @tap="sendMessage" :disabled="sending">
         <view class="bottom-title">发送</view>
-        <view class="bottom-number">剩 {{ userinfo.chance.totalChatChance }} 次</view>
+        <view class="bottom-number" v-if="userinfo">剩 {{ userinfo.chance.totalChatChance }} 次</view>
       </button>
     </view>
   </view>
 </template>
-
 <script>
 import towxml from '@/static/towxml/towxml'
 import marked from '@/static/towxml'
+import NavBar from '@/components/NavBar.vue'
 
 export default {
-  components: { towxml },
+  components: { towxml, NavBar },
   data() {
+    const { windowHeight, safeBottom, menuHeight, statusBarHeight } = getApp().globalData()
+    console.log(safeBottom)
     return {
+      paddingHeight: menuHeight + statusBarHeight,
       // 导航栏和状态栏高度
-      statusBarHeight: wx.getStorageSync('statusBarHeight'),
-      navigationBarHeight: wx.getStorageSync('navigationBarHeight'),
+      windowHeight,
+      safeBottom,
+      keyboardHeight: 0,
       placeholder: '输入关于文档的问题',
       chat: [],
       value: '',
       sending: false,
       title: '',
       dialogId: 0,
-      userinfo: {},
-      config: {},
-      bottomView: 'chat-bottom',
-      keyboardHeight: 0,
+      userinfo: null,
+      config: null,
+      bottomView: 'bottom-view',
       unload: false,
       animation: true
     }
   },
   onLoad(e) {
+    this.unload = false
     if (e && parseInt(e.dialogId)) {
       this.title = e.title
       this.dialogId = parseInt(e.dialogId) || 0
@@ -93,22 +93,20 @@ export default {
 
     uni.onKeyboardHeightChange(res => {
       this.keyboardHeight = res.height
-      this.scrollToBottom()
+      if (res.height) this.scrollToBottom(300)
     })
   },
   onUnload() {
     this.unload = true
   },
   methods: {
-    back() {
-      uni.navigateBack()
-    },
     scrollToBottom(time = 0, animation = true) {
       this.animation = animation
       this.bottomView = ''
-      setTimeout(() => (this.bottomView = 'chat-bottom'), time)
+      setTimeout(() => {
+        this.bottomView = 'bottom-view'
+      }, time)
     },
-    // 发送消息
     async sendMessage() {
       try {
         // check input
@@ -118,20 +116,24 @@ export default {
 
         const input = this.value
         this.value = ''
-        this.sending = true
 
         this.chat.push({
-          avatar: this.userinfo.avatar,
-          content: input,
-          marked: marked(input, 'markdown', { theme: 'dark' }),
-          dialogId: this.dialogId,
-          userId: this.userinfo.id,
           chatId: 0,
+          avatar: this.userinfo.avatar,
+          content: '大模型正在思考中🤔...',
+          marked: marked('大模型思考中🤔...', 'markdown', { theme: 'dark' }),
+          dialogId: this.dialogId,
+          isEffect: true,
+          model: null,
+          resourceId: null,
+          role: 'user',
+          userId: this.userinfo.id,
           type: true
         })
-        this.scrollToBottom(300)
+        this.scrollToBottom()
 
         // send chat prompt
+        this.sending = true
         const data = await this.$h.http('chat-stream', { input, dialogId: this.dialogId })
 
         // force to cover user chat content
@@ -140,7 +142,9 @@ export default {
         this.dialogId = data.dialogId
 
         await this.loopChat()
+        if (!data.isEffect) throw new Error(data.content)
       } catch (e) {
+        this.chat[this.chat.length - 1].marked = marked(e.message, 'markdown', { theme: 'dark' })
         uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
       } finally {
         this.sending = false
@@ -157,14 +161,16 @@ export default {
           if (!data) break
           if (data.dialogId !== this.dialogId) break
 
-          data.marked = marked(data.content, 'markdown', { theme: 'light' })
+          if (data.isEffect) {
+            data.marked = marked(data.content, 'markdown', { theme: 'light' })
 
-          const end = this.chat.length - 1
-          // check processing chat, chatId=0
-          if (this.chat[end].chatId === 0) this.chat[end] = data
-          // check new chat
-          if (this.chat[end].chatId !== data.chatId) this.chat.push(data)
-          this.scrollToBottom(0, false)
+            const end = this.chat.length - 1
+            // check processing chat, chatId=0
+            if (this.chat[end].chatId === 0) this.chat[end] = data
+            // check new chat
+            if (this.chat[end].chatId !== data.chatId) this.chat.push(data)
+            this.scrollToBottom(0, false)
+          }
 
           if (data.chatId > 0) break
         } catch (e) {
@@ -181,18 +187,15 @@ export default {
     async init() {
       try {
         this.chat = []
-        this.sending = true
         const data = await this.$h.http('list-chat', { dialogId: this.dialogId })
         for (const item of data) {
           this.dialogId = item.dialogId
           item.marked = marked(item.content, 'markdown', { theme: item.type ? 'dark' : 'light' })
           this.chat.push(item)
         }
-        await this.loopChat()
+        this.loopChat()
       } catch (e) {
         uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
-      } finally {
-        this.sending = false
       }
     },
 
@@ -206,7 +209,7 @@ export default {
         this.$f.remove('id')
         this.$f.remove('token')
         this.$f.remove('openid')
-        uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
+        uni.showToast({ title: e.msg, duration: 3000, icon: 'none' })
       }
     },
     copy(e) {
@@ -219,45 +222,13 @@ export default {
 }
 </script>
 <style lang="scss" scoped>
-.navbar {
-  position: fixed;
-  width: 100%;
-  top: 0;
-  z-index: 999;
-  background: linear-gradient(to top, rgba(238, 255, 254, 0), rgba(238, 255, 254, 0.85) 25%, rgba(238, 255, 254, 1)) 75%;
-
-  .navigation-bar {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-
-    .back {
-      font-size: 35rpx;
-      color: #000;
-      margin-left: 10rpx;
-    }
-
-    .navbar-title {
-      font-size: 35rpx;
-      max-width: 60vw;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      font-weight: 400;
-    }
-  }
-}
-
-.page {
+.chat {
   background: linear-gradient(to bottom, #eefffe, #fdfdfd);
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
   height: 100vh;
-  width: 100vw;
-
   .content {
     padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
     padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
@@ -270,14 +241,13 @@ export default {
       align-items: center;
       padding: 20rpx;
 
-      &:last-child {
-        padding-bottom: 40rpx;
-      }
-
       &:first-child {
         padding-top: 40rpx;
       }
 
+      &:last-child {
+        padding-bottom: 40rpx;
+      }
       .hr {
         width: 4vw;
       }
@@ -310,11 +280,6 @@ export default {
         }
       }
     }
-    .chat-bottom {
-      height: 0;
-      width: 100vw;
-      display: block;
-    }
   }
 }
 
@@ -326,15 +291,11 @@ export default {
   justify-content: center;
   justify-items: center;
   flex-wrap: wrap;
-  height: 120rpx;
+  min-height: 120rpx;
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  bottom: constant(safe-area-inset-bottom);
-  bottom: env(safe-area-inset-bottom);
-  z-index: 999;
-
   &.bottom-0 {
     bottom: 0;
     height: auto;
@@ -348,11 +309,9 @@ export default {
     width: 420rpx;
     padding: 0 40rpx;
     border: solid 2px #00a29c;
-    color: #000;
 
     &.disable {
       border: solid 2px #ccc;
-      color: #ccc;
     }
   }
 

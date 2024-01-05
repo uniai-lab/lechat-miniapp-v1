@@ -19,32 +19,23 @@
 
 <script>
 export default {
-  data() {
-    return {
-      info: {}
-    }
-  },
   onLoad(e) {
     if (e && e.id) this.$f.set('fid', e.id)
   },
   methods: {
-    async login(e) {
+    async login() {
       try {
         uni.showLoading({ title: '登陆中' })
         const fid = this.$f.get('fid') || 0
         const code = await this.$h.login()
-        const data = await this.$h.http('login', { code, fid })
+        const info = uni.getSystemInfoSync()
+        const data = await this.$h.http('login', { code, fid, info })
         this.$f.set('id', data.id)
         this.$f.set('token', data.token)
         this.$f.set('openid', data.wxOpenId)
         uni.navigateTo({ url: '/pages/index/index' })
       } catch (e) {
-        console.error(e)
-        uni.showToast({
-          title: e.message,
-          duration: 3000,
-          icon: 'error'
-        })
+        uni.showToast({ title: e.message, duration: 3000, icon: 'error' })
       } finally {
         uni.hideLoading()
       }
@@ -55,9 +46,6 @@ export default {
 
 <style lang="scss" scoped>
 .page {
-  background: #eefffe;
-  height: 100vh;
-  width: 100vw;
   .head {
     width: 100%;
     text-align: center;
