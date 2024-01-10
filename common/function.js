@@ -47,3 +47,7 @@ export function formatDate(date, fmt = 'yyyy-MM-dd hh:mm') {
       fmt = fmt.replace(RegExp.$1, RegExp.$1.length === 1 ? o[k] : ('00' + o[k]).substr(('' + o[k]).length))
   return fmt
 }
+
+export function sleep(time) {
+  return new Promise(resolve => setTimeout(resolve, time))
+}

@@ -3,11 +3,15 @@
     <NavBar :title="title" show-back />
 
     <scroll-view
-      :style="{ height: windowHeight - keyboardHeight + 'px' }"
       class="chat"
+      :style="{ height: windowHeight - keyboardHeight + 'px' }"
       scroll-y
+      :refresher-enabled="!sending"
+      scroll-anchoring
+      :refresher-triggered="loading"
       :scroll-with-animation="animation"
       :scroll-into-view="bottomView"
+      @refresherrefresh="getChatList(5)"
     >
       <view class="content" :style="{ paddingTop: paddingHeight + 'px' }" :class="keyboardHeight ? 'bottom-0' : ''">
         <view
@@ -55,7 +59,6 @@ export default {
   components: { towxml, NavBar },
   data() {
     const { windowHeight, safeBottom, menuHeight, statusBarHeight } = getApp().globalData()
-    console.log(safeBottom)
     return {
       paddingHeight: menuHeight + statusBarHeight,
       // 导航栏和状态栏高度
@@ -66,6 +69,7 @@ export default {
       chat: [],
       value: '',
       sending: false,
+      loading: false,
       title: '',
       dialogId: 0,
       userinfo: null,
@@ -76,16 +80,13 @@ export default {
     }
   },
   onLoad(e) {
-    this.unload = false
-    if (e && parseInt(e.dialogId)) {
-      this.title = e.title
-      this.dialogId = parseInt(e.dialogId) || 0
-    } else {
+    // set nav title
+    this.dialogId = (e && parseInt(e.dialogId)) || 0
+    if (this.dialogId) this.title = e.title
+    else {
       this.title = '随便聊聊'
       this.placeholder = '随便说两句'
     }
-
-    if (e && e.title) uni.setNavigationBarTitle({ title: e.title })
 
     this.userinfo = this.$f.get('userinfo')
     this.config = this.$f.get('config')
@@ -103,16 +104,14 @@ export default {
     scrollToBottom(time = 0, animation = true) {
       this.animation = animation
       this.bottomView = ''
-      setTimeout(() => {
-        this.bottomView = 'bottom-view'
-      }, time)
+      setTimeout(() => (this.bottomView = 'bottom-view'), time)
     },
     async sendMessage() {
       try {
         // check input
         if (this.sending) return
-        if (!this.userinfo.chance.totalChatChance) throw new Error('对话次数用尽')
         if (!this.value.trim()) return
+        if (!this.userinfo.chance.totalChatChance) throw new Error('对话次数用尽')
 
         const input = this.value
         this.value = ''
@@ -157,7 +156,7 @@ export default {
         if (this.unload) break
         if (error >= 10) break
         try {
-          const data = await this.getChat()
+          const data = await this.getChatStream()
           if (!data) break
           if (data.dialogId !== this.dialogId) break
 
@@ -180,20 +179,41 @@ export default {
       this.scrollToBottom(300, true)
       this.getUserInfo()
     },
-    async getChat() {
+    async getChatStream() {
       return await this.$h.http('get-chat-stream', {}, 'GET')
+    },
+    async getChatList(pageSize) {
+      try {
+        if (this.loading) return
+        this.loading = true
+
+        const lastId = this.chat.length ? this.chat[0].chatId : 0
+        const data = await this.$h.http('list-chat', { dialogId: this.dialogId, pageSize, lastId })
+        if (!pageSize) {
+          this.chat = []
+          for (const item of data) {
+            this.dialogId = item.dialogId
+            item.marked = marked(item.content, 'markdown', { theme: item.type ? 'dark' : 'light' })
+            this.chat.push(item)
+          }
+        } else {
+          for (const item of data.reverse()) {
+            this.dialogId = item.dialogId
+            item.marked = marked(item.content, 'markdown', { theme: item.type ? 'dark' : 'light' })
+            this.chat.unshift(item)
+          }
+        }
+      } catch (e) {
+        uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
+      } finally {
+        this.loading = false
+      }
     },
     // 获取聊天列表数据
     async init() {
       try {
-        this.chat = []
-        const data = await this.$h.http('list-chat', { dialogId: this.dialogId })
-        for (const item of data) {
-          this.dialogId = item.dialogId
-          item.marked = marked(item.content, 'markdown', { theme: item.type ? 'dark' : 'light' })
-          this.chat.push(item)
-        }
-        this.loopChat()
+        await this.getChatList()
+        await this.loopChat()
       } catch (e) {
         uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
       }

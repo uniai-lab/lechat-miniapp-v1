@@ -69,9 +69,14 @@
       @close="modalClose"
     ></u-modal>
 
-    <view
+    <scroll-view
       class="document"
       v-if="navHeight && headHeight && fileHeight"
+      @scrolltolower="documentList(5)"
+      @refresherrefresh="documentList()"
+      :refresher-triggered="loading"
+      scroll-y
+      scroll-anchoring
       :style="{ height: windowHeight - navHeight - headHeight - fileHeight + 'px' }"
     >
       <view class="list" v-if="list.length">
@@ -85,7 +90,7 @@
               <view class="file-date"> {{ item.date }} {{ item.size }} </view>
             </u-col>
             <u-col span="2" @tap="preview(item)">
-              <uni-icons class="iconfont" type="cloud-download" size="40rpx" color="#00a29c"></uni-icons>
+              <uni-icons class="icon" type="cloud-download" size="40rpx" color="#00a29c"></uni-icons>
             </u-col>
           </u-row>
         </view>
@@ -94,7 +99,7 @@
         <image class="img" src="../../static/null.png"></image>
         <text class="tip">未上传文档</text>
       </view>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -112,13 +117,13 @@ export default {
       config: {},
       list: [],
       show: false,
+      loading: false,
       showNewAppButton: false
     }
   },
   onLoad(e) {
     if (e && e.id) this.$f.set('fid', e.id)
     this.init()
-    this.setDocumentHeight()
   },
   onShareAppMessage() {
     return {
@@ -150,28 +155,17 @@ export default {
     // 登录验证
     async init() {
       // 判断是否登录成功
-      try {
-        uni.showLoading({ title: '加载中' })
-        if (!(this.$f.get('token') && this.$f.get('id') && this.$f.get('openid'))) {
-          const code = await this.$h.login()
-          const data = await this.$h.http('login', { code, fid: this.$f.get('fid') || 0 })
-          this.$f.set('token', data.token)
-          this.$f.set('id', data.id)
-          this.$f.set('openid', data.wxOpenId)
-        }
-        await this.getConfig()
-        await this.getUserInfo()
-        await this.documentList()
-      } catch (e) {
-        console.error(e)
-        uni.showToast({
-          title: e.message,
-          icon: 'none',
-          duration: 3000
-        })
-      } finally {
-        uni.hideLoading()
+      if (!(this.$f.get('token') && this.$f.get('id') && this.$f.get('openid'))) {
+        const code = await this.$h.login()
+        const data = await this.$h.http('login', { code, fid: this.$f.get('fid') || 0 })
+        this.$f.set('token', data.token)
+        this.$f.set('id', data.id)
+        this.$f.set('openid', data.wxOpenId)
       }
+      this.getConfig()
+      this.getUserInfo()
+      this.documentList()
+      this.setDocumentHeight()
     },
     setDocumentHeight() {
       const query = uni.createSelectorQuery()
@@ -214,7 +208,7 @@ export default {
         this.$f.remove('id')
         this.$f.remove('token')
         this.$f.remove('openid')
-        uni.showToast({ title: e.message, icon: 'none' })
+        uni.showToast({ title: e.message, icon: 'error' })
       }
     },
     // 获取配置
@@ -226,47 +220,44 @@ export default {
         //体验新版
         this.show = this.config['showNewApp'] == 'true' || false
         this.showNewAppButton = this.config['showNewApp'] == 'true' || false
-        console.log(this.show, this.showNewAppButton)
       } catch (e) {
-        uni.showToast({ title: e.message, icon: 'none' })
+        uni.showToast({ title: e.message, icon: 'error' })
       }
     },
     // 获取文件列表
-    async documentList() {
+    async documentList(pageSize) {
       try {
-        const data = await this.$h.http('list-dialog-resource', {}, 'GET')
-        for (const i in data) {
-          data[i].size = this.$f.formatBytes(data[i].fileSize, 0)
-          data[i].date = this.$f.formatDate(new Date(data[i].updatedAt))
+        if (this.loading) return
+        this.loading = true
+        if (!pageSize) this.list = []
+        const lastId = this.list.length ? this.list[this.list.length - 1].dialogId : 0
+        const data = await this.$h.http('list-dialog-resource', { pageSize, lastId }, 'POST')
+        if (!data.length) return
+        for (const item of data) {
+          item.size = this.$f.formatBytes(item.fileSize, 0)
+          item.date = this.$f.formatDate(new Date(item.updatedAt))
+          this.list.push(item)
         }
-        this.list = data
       } catch (e) {
-        uni.showToast({
-          title: e.message,
-          icon: 'none'
-        })
+        uni.showToast({ title: e.message, icon: 'error' })
+      } finally {
+        this.loading = false
       }
     },
 
     // 未登录点击名称跳转登录
     login() {
-      uni.navigateTo({
-        url: '/pages/user/login'
-      })
+      uni.navigateTo({ url: '/pages/user/login' })
     },
 
     // 跳转个人信息
     user() {
-      uni.navigateTo({
-        url: '/pages/user/user'
-      })
+      uni.navigateTo({ url: '/pages/user/user' })
     },
 
     // 点击对话
     chat(dialogId, title) {
-      uni.navigateTo({
-        url: `/pages/chat/chat?dialogId=${dialogId}&title=${title}`
-      })
+      uni.navigateTo({ url: `/pages/chat/chat?dialogId=${dialogId}&title=${title}` })
     },
 
     // 选择文件
@@ -294,10 +285,7 @@ export default {
     // 统一上传文件
     async uploadFile(path, name, size) {
       try {
-        uni.showLoading({
-          title: '上传中...',
-          mask: true
-        })
+        uni.showLoading({ title: '上传中...', mask: true })
         // 判断文件大小 > 10MB
         if (size > 10 * 1024 * 1024)
           throw new Error(`上传文件不得大于${this.$f.formatBytes(file_size)}\n当前文件大小${this.$f.formatBytes(size)}`)
@@ -310,11 +298,7 @@ export default {
         this.init()
       } catch (e) {
         console.error(e)
-        uni.showToast({
-          title: e.message,
-          duration: 3000,
-          icon: 'none'
-        })
+        uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
       } finally {
         uni.hideLoading()
       }
@@ -359,8 +343,8 @@ export default {
       .img-center {
         margin-left: 32rpx;
         image {
-          width: 95rpx;
-          height: 95rpx;
+          width: 100rpx;
+          height: 100rpx;
           vertical-align: middle;
         }
       }
@@ -440,9 +424,9 @@ export default {
 
   .document {
     position: absolute;
-    width: 100%;
+    left: 0;
+    right: 0;
     bottom: 0;
-    overflow: scroll;
     .list {
       padding-bottom: constant(safe-area-inset-bottom);
       padding-bottom: env(safe-area-inset-bottom);
@@ -470,7 +454,7 @@ export default {
           font-size: 22.9rpx;
         }
 
-        .iconfont {
+        .icon {
           color: #00a29c;
           float: right;
           margin-right: 30rpx;

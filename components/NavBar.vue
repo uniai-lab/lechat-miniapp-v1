@@ -34,7 +34,7 @@ export default {
   width: 100%;
   top: 0;
   z-index: 999;
-  background: linear-gradient(to top, rgba(238, 255, 254, 0), rgba(238, 255, 254, 0.85) 30%, rgba(238, 255, 254, 1));
+  background: linear-gradient(to top, rgba(238, 255, 254, 0.5), rgba(238, 255, 254, 0.8) 50%, rgba(238, 255, 254, 1));
 
   .navigation-bar {
     display: flex;
