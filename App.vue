@@ -4,7 +4,6 @@ export default {
     const { platform, statusBarHeight, windowHeight, safeAreaInsets } = uni.getSystemInfoSync()
     const { top, height } = uni.getMenuButtonBoundingClientRect()
     const menuHeight = (top - statusBarHeight) * 2 + height
-    console.log(safeAreaInsets)
 
     return {
       platform,

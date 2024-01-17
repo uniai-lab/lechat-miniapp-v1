@@ -48,7 +48,9 @@
             <view class="task-right">
               <text>{{ item.tip }}</text>
               <view class="task-button">
-                <button class="my-button" @tap="task(item.type)">{{ item.button }}</button>
+                <button class="my-button" :open-type="item.type === 1 ? 'share' : ''" @tap="task(item.type)">
+                  {{ item.button }}
+                </button>
               </view>
             </view>
           </view>
@@ -159,7 +161,7 @@ export default {
         imageUrl: this.config.shareImg,
         path: '/pages/index/index?id=' + this.userinfo.id,
         success: () => uni.showToast({ title: '分享成功', icon: 'success' }),
-        fail: e => uni.showToast({ title: `分享失败：${e.message}`, icon: 'error' })
+        fail: e => uni.showToast({ title: `分享失败：${e.errMsg}`, icon: 'error' })
       })
     },
     async getConfig() {

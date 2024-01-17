@@ -16,16 +16,15 @@
       <view class="content" :style="{ paddingTop: paddingHeight + 'px' }" :class="keyboardHeight ? 'bottom-0' : ''">
         <view
           class="chat-content"
-          v-show="item.content"
-          v-for="(item, index) in chat"
+          v-for="(item, index) in chat.filter(v => v.isEffect)"
           :key="index"
-          :data-self="item.type"
+          :data-self="item.role === 'user'"
         >
           <u--image showLoading :src="item.avatar" width="76rpx" height="76rpx" shape="circle" />
           <view class="hr" />
           <view class="content-view" @longpress="copy" :data-item="item.content">
-            <towxml :nodes="item.marked" />
-            <view v-show="!item.type && item.chatId" class="copy-tip" @tap="copy" :data-item="item.content">
+            <towxml :nodes="mark(item.content, item.role)" />
+            <view v-show="item.role !== 'user' && item.chatId" class="copy-tip" @tap="copy" :data-item="item.content">
               长按复制
             </view>
           </view>
@@ -106,44 +105,45 @@ export default {
       this.bottomView = ''
       setTimeout(() => (this.bottomView = 'bottom-view'), time)
     },
+    mark(content, role) {
+      return marked(content, 'markdown', { theme: role === 'user' ? 'dark' : 'light' })
+    },
     async sendMessage() {
       try {
         // check input
-        if (this.sending) return
+        if (this.loading || this.sending) return
         if (!this.value.trim()) return
         if (!this.userinfo.chance.totalChatChance) throw new Error('对话次数用尽')
-
-        const input = this.value
-        this.value = ''
 
         this.chat.push({
           chatId: 0,
           avatar: this.userinfo.avatar,
           content: '大模型正在思考中🤔...',
-          marked: marked('大模型思考中🤔...', 'markdown', { theme: 'dark' }),
           dialogId: this.dialogId,
           isEffect: true,
           model: null,
           resourceId: null,
           role: 'user',
-          userId: this.userinfo.id,
-          type: true
+          userId: this.userinfo.id
         })
         this.scrollToBottom()
 
         // send chat prompt
+        const input = this.value
+        this.value = ''
         this.sending = true
         const data = await this.$h.http('chat-stream', { input, dialogId: this.dialogId })
+        console.log(data)
 
-        // force to cover user chat content
-        data.marked = marked(data.content, 'markdown', { theme: 'dark' })
+        // cover user chat
         this.chat[this.chat.length - 1] = data
         this.dialogId = data.dialogId
 
-        await this.loopChat()
+        // check user input is effect
         if (!data.isEffect) throw new Error(data.content)
+
+        await this.loopChat()
       } catch (e) {
-        this.chat[this.chat.length - 1].marked = marked(e.message, 'markdown', { theme: 'dark' })
         uni.showToast({ title: e.message, duration: 3000, icon: 'none' })
       } finally {
         this.sending = false
@@ -153,30 +153,32 @@ export default {
     async loopChat() {
       let error = 0
       while (true) {
-        if (this.unload) break
-        if (error >= 10) break
         try {
+          if (this.unload) break
+          if (error >= 10) break
+
           const data = await this.getChatStream()
+          console.log(data)
           if (!data) break
           if (data.dialogId !== this.dialogId) break
 
-          if (data.isEffect) {
-            data.marked = marked(data.content, 'markdown', { theme: 'light' })
+          let end = this.chat.length - 1
+          if (this.chat[end].chatId && this.chat[end].chatId !== data.chatId) this.chat.push(data)
+          else this.chat[end] = data
+          this.scrollToBottom(0, false)
 
-            const end = this.chat.length - 1
-            // check processing chat, chatId=0
-            if (this.chat[end].chatId === 0) this.chat[end] = data
-            // check new chat
-            if (this.chat[end].chatId !== data.chatId) this.chat.push(data)
-            this.scrollToBottom(0, false)
+          end = this.chat.length - 2
+          if (this.chat[end].role === 'user') this.chat[end].isEffect = data.isEffect
+
+          if (!data.isEffect) {
+            uni.showToast({ title: data.content, duration: 3000, icon: 'none' })
+            break
           }
-
-          if (data.chatId > 0) break
         } catch (e) {
           error++
         }
       }
-      this.scrollToBottom(300, true)
+      this.scrollToBottom(500, true)
       this.getUserInfo()
     },
     async getChatStream() {
@@ -193,13 +195,11 @@ export default {
           this.chat = []
           for (const item of data) {
             this.dialogId = item.dialogId
-            item.marked = marked(item.content, 'markdown', { theme: item.type ? 'dark' : 'light' })
             this.chat.push(item)
           }
         } else {
           for (const item of data.reverse()) {
             this.dialogId = item.dialogId
-            item.marked = marked(item.content, 'markdown', { theme: item.type ? 'dark' : 'light' })
             this.chat.unshift(item)
           }
         }
